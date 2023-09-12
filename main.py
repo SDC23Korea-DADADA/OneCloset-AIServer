@@ -7,7 +7,7 @@ from domain.fitting import fitting_router
 app = FastAPI()
 
 origins = [
-    "http://127.0.0.1:5173",  # 요청하는 spring 도메인
+    "http://127.0.0.1:8080",  # 요청하는 spring 도메인
 ]
 
 app.add_middleware(
