@@ -39,6 +39,11 @@ async def get_clothes_info(image: UploadFile = File(...)):
     return response
 
 
+@router.post("/test")
+async def check_clothes(image: UploadFile = File(...)):
+    return upload_file(image)
+
+
 async def remove_background(image):
     # 의류 이미지 배경 제거
     nobg_image = service.get_clothes_image(image)
