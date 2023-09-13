@@ -25,10 +25,11 @@ async def get_clothes_info(image: UploadFile = File(...)):
     # 배경 제거
     url = await remove_background(image)
 
+    # 배경 제거된 이미지 자체를 인자로 줘야 할 듯
     # 의류 정보 추출
-    type = service.get_clothes_type(url)
-    color = service.get_clothes_color(url)
-    material = service.get_clothes_material(url)
+    type = service.get_clothes_type(image)
+    color = await service.get_clothes_color(image)
+    material = service.get_clothes_material(image)
 
     response = {
         "image": url,
