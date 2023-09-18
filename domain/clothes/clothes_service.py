@@ -49,8 +49,8 @@ class MaterialModel(nn.Module):
     def __init__(self, *args, **kwargs):
         # 1. 모델 구조 정의
         super().__init__(*args, **kwargs)
-        self.model = models.resnet50()
-        self.model.fc = torch.nn.Linear(self.model.fc.in_features, 10)
+        self.model = models.mobilenet_v3_small()
+        # self.model.fc = torch.nn.Linear(self.model.fc.in_features, 10)
 
         # 2. 모델 가중치 로드
         current_directory = os.path.dirname(os.path.realpath(__file__))
