@@ -6,3 +6,4 @@ numpy
 pandas
 boto3
 python-multipart
+tqdm
