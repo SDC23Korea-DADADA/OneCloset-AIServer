@@ -6,14 +6,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 import torchvision.transforms as transforms
+import torchvision.models as models
 from PIL import Image
 
 import time
 import os
 import io
+from io import BytesIO
 
 # 디바이스 설정
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 # 학습한 모델과 동일한 모델 정의
 class ColorModel(nn.Module):
@@ -41,9 +44,72 @@ class ColorModel(nn.Module):
         x = self.fc3(x)
         return x
 
+
+class MaterialModel(nn.Module):
+    def __init__(self, *args, **kwargs):
+        # 1. 모델 구조 정의
+        super().__init__(*args, **kwargs)
+        self.model = models.mobilenet_v3_small()
+        # self.model.fc = torch.nn.Linear(self.model.fc.in_features, 10)
+
+        # 2. 모델 가중치 로드
+        current_directory = os.path.dirname(os.path.realpath(__file__))
+        self.load_weights(os.path.join(current_directory, "material_model_state_dict.pth"))
+        self.model.eval()
+
+    def load_weights(self, model_path):
+        # CPU에서 실행
+        self.model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
+
+    async def preprocess_image(self, image_file):
+        await image_file.seek(0)
+        image_data = await image_file.read()
+        image = Image.open(io.BytesIO(image_data)).convert('RGB')
+
+        transform = transforms.Compose([
+            transforms.Resize(224),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
+        image = transform(image).unsqueeze(0)
+        return image
+
+    async def predict(self, image):
+        material_int_to_labels = {
+            0: "퍼",
+            1: "면",
+            2: "니트",
+            3: "데님",
+            4: "시폰",
+            5: "패딩",
+            6: "트위드",
+            7: "플리스",
+            8: "가죽",
+            9: "코듀로이",
+        }
+        k = 3
+        with torch.no_grad():
+            outputs = self.model(image)
+            _, predicted = outputs.max(1)
+
+            values, indices = torch.topk(outputs, k)
+            top3_labels = [idx.item() for idx in indices[0]]
+            top3_probs = [val.item() * 100 for val in values[0]]
+
+            # 결과 출력
+            print('재질 추론 결과: ', end=' ')
+            for n in range(k):
+                print('%s - %.2f' % (material_int_to_labels[top3_labels[n]], top3_probs[n]), end=' ')
+            print()
+            material = top3_labels[0]
+            return material
+
+
 def get_clothes_type(file: UploadFile):
     # TODO: 딥러닝 모델을 통해 의류 종류 추론
     return "바지"
+
 
 async def get_clothes_color(file: UploadFile):
     # TODO: 딥러닝 모델을 통해 의류 색상 추론
@@ -88,7 +154,7 @@ async def get_clothes_color(file: UploadFile):
     # 추론
     with torch.no_grad():
         for images in testloader:
-            if(torch.cuda.is_available()):
+            if (torch.cuda.is_available()):
                 images = images.to(device)
 
             outputs = model(images)
@@ -98,7 +164,7 @@ async def get_clothes_color(file: UploadFile):
             top3_probs = [val.item() * 100 for val in values[0]]
 
             # 결과 출력
-            print('추론 결과: ', end = ' ')
+            print('추론 결과: ', end=' ')
             for n in range(3):
                 print('%s - %.2f' % (top3_labels[n], top3_probs[n]), end=' ')
             print()
@@ -110,9 +176,34 @@ async def get_clothes_color(file: UploadFile):
 
     return color
 
-def get_clothes_material(file: UploadFile):
+
+async def get_clothes_material(file: UploadFile):
     # TODO: 딥러닝 모델을 통해 의류 재질 추론
-    return "데님"
+    # 시작 시간
+    start_time = time.time()
+    resnet = MaterialModel()
+    # 추론 시작
+    infer_start_time = time.time()
+    image = await resnet.preprocess_image(file)
+
+    predicted_class = await resnet.predict(image)
+    materials = {
+        0: "퍼",
+        1: "면",
+        2: "니트",
+        3: "데님",
+        4: "시폰",
+        5: "패딩",
+        6: "트위드",
+        7: "플리스",
+        8: "가죽",
+        9: "코듀로이",
+    }
+    # 끝 시간
+    end_time = time.time()
+    print("재질 실행 시간", end_time - start_time, "seconds", ", 추론 시간", end_time - infer_start_time)
+    return materials[predicted_class]
+
 
 def get_clothes_image(file: UploadFile):
     # TODO: 세그멘테이션 모델을 통해 의류 이미지 배경 제거

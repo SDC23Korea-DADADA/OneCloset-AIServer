@@ -29,7 +29,7 @@ async def get_clothes_info(image: UploadFile = File(...)):
     # 의류 정보 추출
     type = service.get_clothes_type(image)
     color = await service.get_clothes_color(image)
-    material = service.get_clothes_material(image)
+    material = await service.get_clothes_material(image)
 
     response = {
         "image": url,
