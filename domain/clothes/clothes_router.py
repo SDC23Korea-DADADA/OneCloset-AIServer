@@ -1,3 +1,5 @@
+import io
+
 from fastapi import APIRouter, File, UploadFile
 import domain.clothes.clothes_service as service
 from domain.s3.s3_service import upload_file
@@ -25,11 +27,16 @@ async def get_clothes_info(image: UploadFile = File(...)):
     # 배경 제거
     url = await remove_background(image)
 
+    image_data = await image.read()
+    image_stream = io.BytesIO(image_data)
+
     # 배경 제거된 이미지 자체를 인자로 줘야 할 듯
     # 의류 정보 추출
-    type = service.get_clothes_type(image)
-    color = await service.get_clothes_color(image)
-    material = await service.get_clothes_material(image)
+    type = await service.get_clothes_type(image_stream)
+    image_stream.seek(0)
+    color = await service.get_clothes_color(image_stream)
+    image_stream.seek(0)
+    material = await service.get_clothes_material(image_stream)
 
     response = {
         "image": url,
