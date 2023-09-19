@@ -129,6 +129,7 @@ async def get_clothes_color(file: UploadFile):
     model = ColorModel()
 
     model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))  # 학습된 모델의 매개변수 불러오기
+    model.to(device)
     model.eval()
 
     # 테스트 데이터 생성
@@ -154,8 +155,7 @@ async def get_clothes_color(file: UploadFile):
     # 추론
     with torch.no_grad():
         for images in testloader:
-            if (torch.cuda.is_available()):
-                images = images.to(device)
+            images = images.to(device)
 
             outputs = model(images)
             values, indices = torch.topk(outputs, 3)  # 상위 3개의 확률과 인덱스를 가져옴
