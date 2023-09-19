@@ -1,3 +1,4 @@
+import cv2
 from fastapi import UploadFile
 
 import numpy as np
@@ -61,10 +62,10 @@ class MaterialModel(nn.Module):
         # CPU에서 실행
         self.model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
 
-    async def preprocess_image(self, image_file):
-        await image_file.seek(0)
-        image_data = await image_file.read()
-        image = Image.open(io.BytesIO(image_data)).convert('RGB')
+    async def preprocess_image(self, image_stream):
+        # await image_file.seek(0)
+        # image_data = await image_file.read()
+        image = Image.open(image_stream).convert('RGB')
 
         transform = transforms.Compose([
             transforms.Resize(224),
@@ -106,12 +107,59 @@ class MaterialModel(nn.Module):
             return material
 
 
-def get_clothes_type(file: UploadFile):
+async def get_clothes_type(image_stream):
     # TODO: 딥러닝 모델을 통해 의류 종류 추론
-    return "바지"
+    type_int_to_labels = {0: '긴팔티', 1: '반팔티', 2: '셔츠/블라우스', 3: '니트웨어', 4: '후드티', 5: '민소매',
+                     6: '긴바지', 7: '반바지', 8: '롱스커트', 9: '미니스커트', 10: '코트',
+                     11: '재킷', 12: '점퍼/짚업', 13: '패딩', 14: '가디건', 15: '베스트', 16: '원피스', 17: '점프수트'}
+
+    transform = transforms.Compose(
+        [transforms.Resize((256, 256)),
+         transforms.ToTensor(),
+         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+    start_time = time.time()
+
+    current_directory = os.path.dirname(os.path.realpath(__file__))
+    model_path = os.path.join(current_directory, "type_model_state_dict.pth")
+
+    model = models.mobilenet_v3_small(weights = models.MobileNet_V3_Small_Weights)
+    model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))  # 학습된 모델의 매개변수 불러오기
+    model.to(device)
+    model.eval()
+
+    image = Image.open(image_stream)
+    if image.mode == 'RGBA':
+        r, g, b, a = image.split()
+        bg = Image.new('RGB', image.size, (255, 255, 255))  # 흰색 배경
+        bg.paste(image, mask=a)
+        image = bg
+    image = transform(image).unsqueeze(0)
+
+    infer_start_time = time.time()
+    with torch.no_grad():
+        image = image.to(device)
+        outputs = model(image)
+        values, indices = torch.topk(outputs, 3)  # 상위 3개의 확률과 인덱스를 가져옴
+
+        top3_labels = [type_int_to_labels[idx.item()] for idx in indices[0]]
+        top3_probs = [val.item() * 100 for val in values[0]]
+
+        # 결과 출력
+        print('종류 추론 결과: ', end=' ')
+        for n in range(3):
+            print('%s - %.2f' % (top3_labels[n], top3_probs[n]), end=' ')
+        print()
+        type = top3_labels[0]
+
+    end_time = time.time()
+    print("종류 실행 시간", end_time - start_time, "seconds", ", 추론 시간", end_time - infer_start_time, "seconds")
+
+    # 라벨을 숫자로 변환
+    return type
 
 
-async def get_clothes_color(file: UploadFile):
+async def get_clothes_color(image_stream):
     # TODO: 딥러닝 모델을 통해 의류 색상 추론
     # 라벨을 숫자로 변환
     color_int_to_labels = {1: '블랙', 2: '그레이', 3: '그린', 4: '네이비', 5: '라벤더',
@@ -138,53 +186,48 @@ async def get_clothes_color(file: UploadFile):
          transforms.ToTensor(),
          transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-    image_data = await file.read()
-    image = Image.open(io.BytesIO(image_data))
+    image = Image.open(image_stream)
     if image.mode == 'RGBA':
         r, g, b, a = image.split()
         bg = Image.new('RGB', image.size, (255, 255, 255))  # 흰색 배경
         bg.paste(image, mask=a)
         image = bg
-    image = transform(image)
-    test_dataset = [image]
-
-    testloader = torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=2)
+    image = transform(image).unsqueeze(0)
 
     # 추론 시작
     infer_start_time = time.time()
     # 추론
     with torch.no_grad():
-        for images in testloader:
-            images = images.to(device)
+        image = image.to(device)
 
-            outputs = model(images)
-            values, indices = torch.topk(outputs, 3)  # 상위 3개의 확률과 인덱스를 가져옴
+        outputs = model(image)
+        values, indices = torch.topk(outputs, 3)  # 상위 3개의 확률과 인덱스를 가져옴
 
-            top3_labels = [color_int_to_labels[idx.item()] for idx in indices[0]]
-            top3_probs = [val.item() * 100 for val in values[0]]
+        top3_labels = [color_int_to_labels[idx.item()] for idx in indices[0]]
+        top3_probs = [val.item() * 100 for val in values[0]]
 
-            # 결과 출력
-            print('추론 결과: ', end=' ')
-            for n in range(3):
-                print('%s - %.2f' % (top3_labels[n], top3_probs[n]), end=' ')
-            print()
-            color = top3_labels[0]
+        # 결과 출력
+        print('색상 추론 결과: ', end=' ')
+        for n in range(3):
+            print('%s - %.2f' % (top3_labels[n], top3_probs[n]), end=' ')
+        print()
+        color = top3_labels[0]
 
     # 끝 시간
     end_time = time.time()
-    print("실행 시간", end_time - start_time, "seconds", ", 추론 시간", end_time - infer_start_time)
+    print("색상 실행 시간", end_time - start_time, "seconds", ", 추론 시간", end_time - infer_start_time)
 
     return color
 
 
-async def get_clothes_material(file: UploadFile):
+async def get_clothes_material(image_stream):
     # TODO: 딥러닝 모델을 통해 의류 재질 추론
     # 시작 시간
     start_time = time.time()
     resnet = MaterialModel()
     # 추론 시작
     infer_start_time = time.time()
-    image = await resnet.preprocess_image(file)
+    image = await resnet.preprocess_image(image_stream)
 
     predicted_class = await resnet.predict(image)
     materials = {
