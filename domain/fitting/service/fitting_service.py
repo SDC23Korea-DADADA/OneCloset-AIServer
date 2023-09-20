@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 def preprocess(url):
     preprocess_path = "~/preprocess/"
     dataroot = "~/data"
-    fname = uuid.uuid4()[:13]
+    fname = str(uuid.uuid4())[:13]
     logger.info("[Preprocess] fname(uuid): " + fname)
 
     exit_code = subprocess.call(
