@@ -49,12 +49,11 @@ class MaterialModel(nn.Module):
     def __init__(self, *args, **kwargs):
         # 1. 모델 구조 정의
         super().__init__(*args, **kwargs)
-        self.model = models.mobilenet_v3_small()
-        # self.model.fc = torch.nn.Linear(self.model.fc.in_features, 10)
+        self.model = models.mobilenet_v3_large()
 
         # 2. 모델 가중치 로드
         current_directory = os.path.dirname(os.path.realpath(__file__))
-        self.load_weights(os.path.join(current_directory, "material_model_state_dict.pth"))
+        self.load_weights(os.path.join(current_directory, "models/material_model_state_dict.pth"))
         self.model.eval()
 
     def load_weights(self, model_path):
@@ -77,7 +76,7 @@ class MaterialModel(nn.Module):
 
     async def predict(self, image):
         material_int_to_labels = {
-            0: "퍼",
+            0: "코듀로이",
             1: "면",
             2: "니트",
             3: "데님",
@@ -86,7 +85,6 @@ class MaterialModel(nn.Module):
             6: "트위드",
             7: "플리스",
             8: "가죽",
-            9: "코듀로이",
         }
         k = 3
         with torch.no_grad():
@@ -123,7 +121,7 @@ async def get_clothes_color(file: UploadFile):
     start_time = time.time()
 
     current_directory = os.path.dirname(os.path.realpath(__file__))
-    model_path = os.path.join(current_directory, "color_model_state_dict.pth")
+    model_path = os.path.join(current_directory, "models/color_model_state_dict.pth")
 
     # 모델을 평가 모드로 설정
     model = ColorModel()
@@ -188,7 +186,7 @@ async def get_clothes_material(file: UploadFile):
 
     predicted_class = await resnet.predict(image)
     materials = {
-        0: "퍼",
+        0: "코듀로이",
         1: "면",
         2: "니트",
         3: "데님",
@@ -197,7 +195,6 @@ async def get_clothes_material(file: UploadFile):
         6: "트위드",
         7: "플리스",
         8: "가죽",
-        9: "코듀로이",
     }
     # 끝 시간
     end_time = time.time()
