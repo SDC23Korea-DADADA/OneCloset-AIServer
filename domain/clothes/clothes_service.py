@@ -64,8 +64,7 @@ class MaterialModel(nn.Module):
         self.model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
 
     async def preprocess_image(self, image_stream):
-        # await image_file.seek(0)
-        # image_data = await image_file.read()
+        # image_data = await image_stream.read()
         image = Image.open(image_stream).convert('RGB')
 
         transform = transforms.Compose([
@@ -224,12 +223,12 @@ async def get_clothes_material(image_stream):
     # TODO: 딥러닝 모델을 통해 의류 재질 추론
     # 시작 시간
     start_time = time.time()
-    resnet = MaterialModel()
+    material_model = MaterialModel()
     # 추론 시작
     infer_start_time = time.time()
-    image = await resnet.preprocess_image(image_stream)
+    image = await material_model.preprocess_image(image_stream)
 
-    predicted_class = await resnet.predict(image)
+    predicted_class = await material_model.predict(image)
     materials = {
         0: "코듀로이",
         1: "면",
