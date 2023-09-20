@@ -11,13 +11,17 @@ logger = logging.getLogger(__name__)
 
 
 def preprocess(url):
+    origin_path = os.getcwd()
     preprocess_path = "/home/cksghks88/preprocess/"
     dataroot = "/home/cksghks88/data"
     fname = str(uuid.uuid4())[:13]
     logger.info("[Preprocess] fname(uuid): " + fname)
 
+    # preprocess 쉘 스크립트 실행
+    os.chdir(preprocess_path)
     exit_code = subprocess.call(
         ["bash", preprocess_path + "preprocess.sh", "--dataroot", dataroot, "--dir", fname, "--url", url])
+    os.chdir(origin_path)
 
     if exit_code == 1:
         logger.error("[Preprocess] preprocess failed")
