@@ -14,10 +14,12 @@ import time
 import os
 import io
 from io import BytesIO
+from rembg import remove
 
 # 디바이스 설정
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "9"
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
 
 # 학습한 모델과 동일한 모델 정의
 class ColorModel(nn.Module):
@@ -248,6 +250,17 @@ async def get_clothes_material(image_stream):
     return materials[predicted_class]
 
 
-def get_clothes_image(file: UploadFile):
+def get_clothes_image(image_stream):
     # TODO: 세그멘테이션 모델을 통해 의류 이미지 배경 제거
-    return
+    input = Image.open(image_stream)
+
+    # 이미지 사이즈가 큰 경우 리사이즈
+    if(input.size[0] > 500):
+        width = 500
+        width_ratio = 500 / float(input.size[0])
+        height = int((float(input.size[1])) * width_ratio)
+        input = input.resize((width, height))
+
+    output = remove(input)
+    # print(output)
+    return output
