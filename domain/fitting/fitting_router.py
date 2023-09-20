@@ -1,23 +1,32 @@
 from typing import List
 
 from fastapi import APIRouter, File, UploadFile
+
+from domain.fitting.schemas.ModelRegistResponse import ModelRegistResponse
 from domain.s3.s3_service import upload_file
 from pydantic import BaseModel
+from domain.fitting.service.fitting_service import preprocess
+
+from domain.fitting.schemas.FittingRequestModel import FittingRequestModel
 
 
-class ClothesInfo(BaseModel):
-    type: str
-    url: str
+# class ClothesInfo(BaseModel):
+#     type: str
+#     url: str
+#
+#
+# class FittingRequestModel(BaseModel):
+#     model: str
+#     labelMap: str
+#     skeleton: str
+#     keypoint: str
+#     dense: str
+#     denseNpz: str
+#     clothesList: List[ClothesInfo]
 
 
-class FittingRequestModel(BaseModel):
-    model: str
-    labelMap: str
-    skeleton: str
-    keypoint: str
-    dense: str
-    denseNpz: str
-    clothesList: List[ClothesInfo]
+class ImageModel(BaseModel):
+    image: str
 
 
 router = APIRouter(
@@ -36,22 +45,21 @@ async def create_virtual_fitting(model: FittingRequestModel):
     return {"image": url}
 
 
-@router.post("/preprocess")
-async def regist_fitting_model(image: UploadFile = File(...)):
+@router.post("/preprocess", response_model=ModelRegistResponse)
+async def regist_fitting_model(request: ImageModel):
+    return preprocess(request.image)
 
-    origin_img_url = "origin_img_url"
-    label_map = "label_map"
-    skeleton = "skeleton"
-    keypoint = "keypoint"
-    dense = "dense"
-    dense_npz = "dense_npz"
-
-    # TODO: vton 진행시 사용되는 모델이미지 전처리
-    return {
-        "originImg": origin_img_url,
-        "labelMap": label_map,
-        "skeleton": skeleton,
-        "keypoint": keypoint,
-        "dense": dense,
-        "denseNpz": dense_npz
-    }
+    # label_map = "label_map"
+    # skeleton = "skeleton"
+    # keypoint = "keypoint"
+    # dense = "dense"
+    # dense_npz = "dense_npz"
+    #
+    # # TODO: vton 진행시 사용되는 모델이미지 전처리
+    # return {
+    #     "labelMap": label_map,
+    #     "skeleton": skeleton,
+    #     "keypoint": keypoint,
+    #     "dense": dense,
+    #     "denseNpz": dense_npz
+    # }
