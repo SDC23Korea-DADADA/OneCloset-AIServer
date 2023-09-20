@@ -5,13 +5,19 @@ from domain.s3.s3_service import upload_file
 from pydantic import BaseModel
 
 
+class ClothesInfo(BaseModel):
+    type: str
+    url: str
+
+
 class FittingRequestModel(BaseModel):
     model: str
-    segmantation: str
-    poseSkeleton: str
-    keypoints: str
-    denseModel: str
-    clothesList: List[str]
+    labelMap: str
+    skeleton: str
+    keypoint: str
+    dense: str
+    denseNpz: str
+    clothesList: List[ClothesInfo]
 
 
 router = APIRouter(
@@ -34,16 +40,18 @@ async def create_virtual_fitting(model: FittingRequestModel):
 async def regist_fitting_model(image: UploadFile = File(...)):
 
     origin_img_url = "origin_img_url"
-    segmentation = "segmentation22"
-    pose_skeleton = "pose_skeleton33"
-    keypoints = "keypoint44s"
-    dense_model = "dense_model55"
+    label_map = "label_map"
+    skeleton = "skeleton"
+    keypoint = "keypoint"
+    dense = "dense"
+    dense_npz = "dense_npz"
 
     # TODO: vton 진행시 사용되는 모델이미지 전처리
     return {
         "originImg": origin_img_url,
-        "segmentation": segmentation,
-        "skeleton": pose_skeleton,
-        "keypoints": keypoints,
-        "denseModel": dense_model
+        "labelMap": label_map,
+        "skeleton": skeleton,
+        "keypoint": keypoint,
+        "dense": dense,
+        "denseNpz": dense_npz
     }
