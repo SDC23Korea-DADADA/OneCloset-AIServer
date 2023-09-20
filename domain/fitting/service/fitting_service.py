@@ -19,7 +19,7 @@ def preprocess(url):
 
     # preprocess 쉘 스크립트 실행
     os.chdir(preprocess_path)
-    exit_code = subprocess.call(
+    exit_code = subprocess.run(
         ["bash", preprocess_path + "preprocess.sh", "--dataroot", dataroot, "--dir", fname, "--url", url])
     os.chdir(origin_path)
 
