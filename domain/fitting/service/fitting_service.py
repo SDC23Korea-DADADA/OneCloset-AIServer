@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 
 
 def preprocess(url):
-    preprocess_path = "~/preprocess/"
-    dataroot = "~/data"
+    preprocess_path = "/home/cksghks88/preprocess/"
+    dataroot = "/home/cksghks88/data"
     fname = str(uuid.uuid4())[:13]
     logger.info("[Preprocess] fname(uuid): " + fname)
 
