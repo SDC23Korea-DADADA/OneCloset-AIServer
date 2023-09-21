@@ -22,9 +22,10 @@ home_path = "/home/cksghks88/"
 def fitting(request, type, cloth_url):
     origin_path = os.getcwd()
     vton_path = home_path + "vton/"
+    temp_path = vton_path + "temps/"
 
     fname = request.labelMap.split("/")[-1].split("_")[0]
-    dataroot = vton_path + "input/" + fname
+    dataroot = vton_path + "inputs/" + fname
     logger.info("[Fitting] fname(uuid): " + fname)
 
     # input 폴더 생성
@@ -32,16 +33,54 @@ def fitting(request, type, cloth_url):
     create_default_folder(dataroot + "/lower_body")
     create_default_folder(dataroot + "/upper_body")
 
-    # 이미지를 지정된 경로에 저장
+    input_dir = ""
+    output_dir = ""
+    if type == "dress":
+        input_dir = dataroot + "/dresses/images/"
+        output_dir = vton_path + "results/unpaired/dresses/"
+    elif type == "lower":
+        input_dir = dataroot + "/lower_body/images/"
+        output_dir = vton_path + "results/unpaired/lower_body/"
+    elif type == "upper":
+        input_dir = dataroot + "/upper_body/images/"
+        output_dir = vton_path + "results/unpaired/upper_body/"
 
-    # 사용 예시
-    download_file('https://example.com/file.zip', '/path/to/save/file.zip')
+    # 의류 이미지를 지정된 경로에 저장
+    cloth_fname = str(uuid.uuid4())[:13].replace("-", "") + "_1.jpg"
+    download_file(cloth_url, temp_path + cloth_fname)
+
+    shutil.copy(temp_path + cloth_fname, input_dir + cloth_fname)
+    image = Image.open(input_dir + cloth_fname)
+    new = resize_with_pad(image, 384, 512)
+    new.save(input_dir + cloth_fname)
+
+    # Model 이미지를 지정된 경로에 저장
+    model_fname = fname + "_0.jpg"
+    download_file(request.model, temp_path + model_fname)
+
+    shutil.copy(temp_path + temp_path + model_fname, input_dir + model_fname)
+    image = Image.open(input_dir + model_fname)
+    new = resize_with_pad(image, 384, 512)
+    new.save(input_dir + model_fname)
+
+    # Model 전처리 이미지를 지정된 경로에 저장
+    input_dir = input_dir[:-7]
+    download_file(request.dense, input_dir + request.dense.split("/")[-1])
+    download_file(request.denseNpz, input_dir + request.denseNpz.split("/")[-1])
+    download_file(request.keypoint, input_dir + request.keypoint.split("/")[-1])
+    download_file(request.labelMap, input_dir + request.labelMap.split("/")[-1])
+    download_file(request.skeleton, input_dir + request.skeleton.split("/")[-1])
 
     # preprocess 쉘 스크립트 실행
     os.chdir(vton_path)
     subprocess.run(
-        ["bash", vton_path + "test.sh", "--dataroot", fname, "--type", type])
+        ["bash", vton_path + "test.sh", "--dataroot", dataroot])
     os.chdir(origin_path)
+
+    # 가상피팅 결과 반환
+    output_fname = fname + "_0.jpg"
+    aws_url = upload_general_file(output_fname, output_dir)
+    return aws_url
 
 
 def preprocess(url):
