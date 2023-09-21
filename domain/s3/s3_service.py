@@ -24,14 +24,12 @@ def upload_image(image):
 def upload_general_file(file, path):
     try:
         file_name = os.path.basename(file)
-        with open(file, 'rb') as file:
+        with open(path + file, 'rb') as file:
             s3.upload_fileobj(path + file, AWS_S3_BUCKET_NAME, file_name)
         return AWS_S3_URL + file_name
     except FileNotFoundError:
         print(f"The file {file} was not found")
         return None
-    # s3.upload_fileobj(file.file, AWS_S3_BUCKET_NAME, file.filename)
-    # return AWS_S3_URL + file.filename
 
 
 def upload_file_Image(image, filename):
