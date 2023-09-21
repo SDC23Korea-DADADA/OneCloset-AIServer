@@ -1,6 +1,7 @@
 from domain.secret import s3, AWS_S3_BUCKET_NAME, AWS_S3_URL
 import uuid
 import base64
+import os
 
 
 def upload_file(image):
@@ -21,8 +22,16 @@ def upload_image(image):
 
 
 def upload_general_file(file):
-    s3.upload_fileobj(file.file, AWS_S3_BUCKET_NAME, file.filename)
-    return AWS_S3_URL + file.filename
+    try:
+        file_name = os.path.basename(file)
+        with open(file, 'rb') as file:
+            s3.upload_fileobj(file, AWS_S3_BUCKET_NAME, file_name)
+        return AWS_S3_URL + file_name
+    except FileNotFoundError:
+        print(f"The file {file} was not found")
+        return None
+    # s3.upload_fileobj(file.file, AWS_S3_BUCKET_NAME, file.filename)
+    # return AWS_S3_URL + file.filename
 
 
 def upload_file_Image(image, filename):

@@ -40,6 +40,7 @@ def preprocess(url):
 
     url_dict = {}
     for file in glob.glob('*', root_dir=dataroot + "/" + fname):
+        type(file)
         postfix = file.split("_")[-1]
         aws_url = upload_general_file(file)
 
