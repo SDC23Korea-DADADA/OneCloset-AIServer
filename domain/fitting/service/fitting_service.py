@@ -14,7 +14,7 @@ def preprocess(url):
     origin_path = os.getcwd()
     preprocess_path = "/home/cksghks88/preprocess/"
     dataroot = "/home/cksghks88/data"
-    fname = str(uuid.uuid4())[:13]
+    fname = str(uuid.uuid4())[:13].replace("-", "")
     logger.info("[Preprocess] fname(uuid): " + fname)
 
     # preprocess 쉘 스크립트 실행
@@ -39,10 +39,10 @@ def preprocess(url):
     }
 
     url_dict = {}
-    index = 0
     for file in glob.glob('*', root_dir=dataroot + "/" + fname + "/outputs"):
         postfix = file.split("_")[-1]
-        aws_url = upload_general_file(file)
+        aws_url = upload_general_file(file, dataroot + "/" + fname + "/outputs/")
         url_dict[file_map[postfix]] = aws_url
 
+    logger.info("[Preprocess] url_dict: " + str(url_dict))
     return url_dict
