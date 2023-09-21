@@ -32,20 +32,25 @@ def fitting(request, type, cloth_url):
     create_default_folder(dataroot + "/dresses")
     create_default_folder(dataroot + "/lower_body")
     create_default_folder(dataroot + "/upper_body")
+    clear_path(dataroot, vton_path + "results/unpaired/")
 
     input_dir = ""
     output_dir = ""
+    type_path = ""
     if type == "dress":
         input_dir = dataroot + "/dresses/images/"
         output_dir = vton_path + "results/unpaired/dresses/"
+        type_path = "dresses"
     elif type == "lower":
         input_dir = dataroot + "/lower_body/images/"
         output_dir = vton_path + "results/unpaired/lower_body/"
+        type_path = "lower_body"
     elif type == "upper":
         input_dir = dataroot + "/upper_body/images/"
         output_dir = vton_path + "results/unpaired/upper_body/"
+        type_path = "upper_body"
 
-    # 의류 이미지를 지정된 경로에 저장
+    # 의류 이미지를 지정된 경로에 저장 & 의류 마스크 이미지 생성
     cloth_fname = str(uuid.uuid4())[:13].replace("-", "") + "_1.jpg"
     download_file(cloth_url, temp_path + cloth_fname)
 
@@ -53,6 +58,7 @@ def fitting(request, type, cloth_url):
     image = Image.open(input_dir + cloth_fname)
     new = resize_with_pad(image, 384, 512)
     new.save(input_dir + cloth_fname)
+    write_edge(input_dir + cloth_fname, input_dir + os.path.splitext(cloth_fname)[0] + ".png")
 
     # Model 이미지를 지정된 경로에 저장
     model_fname = fname + "_0.jpg"
@@ -65,11 +71,18 @@ def fitting(request, type, cloth_url):
 
     # Model 전처리 이미지를 지정된 경로에 저장
     input_dir = input_dir[:-7]
-    download_file(request.dense, input_dir + request.dense.split("/")[-1])
-    download_file(request.denseNpz, input_dir + request.denseNpz.split("/")[-1])
-    download_file(request.keypoint, input_dir + request.keypoint.split("/")[-1])
-    download_file(request.labelMap, input_dir + request.labelMap.split("/")[-1])
-    download_file(request.skeleton, input_dir + request.skeleton.split("/")[-1])
+    download_file(request.dense, input_dir + "dense/" + request.dense.split("/")[-1])
+    download_file(request.denseNpz, input_dir + "dense/" + request.denseNpz.split("/")[-1])
+    download_file(request.keypoint, input_dir + "keypoints/" + request.keypoint.split("/")[-1])
+    download_file(request.labelMap, input_dir + "label_maps/" + request.labelMap.split("/")[-1])
+    download_file(request.skeleton, input_dir + "skeletons/" + request.skeleton.split("/")[-1])
+
+    # 추론에 필요한 텍스트 파일 생성
+    typeNum = type == "upper" and 0 or type == "lower" and 1 or 2
+    with open(dataroot + "/test_pairs_paired.txt", "w") as f:
+        f.write(fname + "_0.jpg\t" + cloth_fname + "\t" + str(typeNum))
+    with open(dataroot + type_path + "/test_pairs_unpaired.txt", "w") as f:
+        f.write(fname + "_0.jpg\t" + cloth_fname)
 
     # preprocess 쉘 스크립트 실행
     os.chdir(vton_path)
@@ -116,8 +129,11 @@ def preprocess(url):
 
 def download_file(url, save_path):
     with requests.get(url) as r:
-        with open(save_path, 'wb') as f:
-            f.write(r.content)
+        if r.status_code != 200:
+            with open(save_path, 'wb') as f:
+                f.write(r.content)
+        else:
+            logger.error("[Download] " + url + " is not valid")
 
 
 def create_directory(path):
@@ -140,6 +156,15 @@ def create_default_folder(path):
     create_directory(path + "/masks")
     create_directory(path + "/skeletons")
 
+
+def clear_path(input_path, output_path):
+    files = glob.glob(f'{input_path}/*/*/*.*')
+    for f in files:
+      os.remove(f)
+
+    files = glob.glob(f'{output_path}/*/*/*.*')
+    for f in files:
+      os.remove(f)
 
 def resize_with_pad(im, target_width, target_height):
     '''
