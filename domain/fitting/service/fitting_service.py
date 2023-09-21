@@ -81,7 +81,7 @@ def fitting(request, type, cloth_url):
     typeNum = type == "upper" and 0 or type == "lower" and 1 or 2
     with open(dataroot + "/test_pairs_paired.txt", "w") as f:
         f.write(fname + "_0.jpg\t" + cloth_fname + "\t" + str(typeNum))
-    with open(dataroot + type_path + "/test_pairs_unpaired.txt", "w") as f:
+    with open(dataroot + "/" + type_path + "/test_pairs_unpaired.txt", "w") as f:
         f.write(fname + "_0.jpg\t" + cloth_fname)
 
     # preprocess 쉘 스크립트 실행
@@ -161,11 +161,12 @@ def create_default_folder(path):
 def clear_path(input_path, output_path):
     files = glob.glob(f'{input_path}/*/*/*.*')
     for f in files:
-      os.remove(f)
+        os.remove(f)
 
     files = glob.glob(f'{output_path}/*/*/*.*')
     for f in files:
-      os.remove(f)
+        os.remove(f)
+
 
 def resize_with_pad(im, target_width, target_height):
     '''
