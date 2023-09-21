@@ -78,7 +78,7 @@ def fitting(request, type, cloth_url):
     download_file(request.skeleton, preprocess_dir + "skeletons/" + request.skeleton.split("/")[-1])
 
     # 추론에 필요한 텍스트 파일 생성
-    typeNum = type == "upper" and 0 or type == "lower" and 1 or 2
+    typeNum = 0 if type == "upper" else 1 if type == "lower" else 2
     list = ['upper_body', 'lower_body', 'dresses']
 
     with open(dataroot + "/test_pairs_paired.txt", "w") as f:
