@@ -129,11 +129,12 @@ def preprocess(url):
 
 def download_file(url, save_path):
     with requests.get(url) as r:
-        if r.status_code != 200:
+        if r.status_code == 200:
+            logger.info("[Download] " + url + " is completed")
             with open(save_path, 'wb') as f:
                 f.write(r.content)
         else:
-            logger.error("[Download] " + url + " is not valid")
+            logger.error("[Download] " + url + " is failed")
 
 
 def create_directory(path):
