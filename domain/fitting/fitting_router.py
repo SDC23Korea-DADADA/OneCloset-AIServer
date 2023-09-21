@@ -9,6 +9,7 @@ from domain.fitting.service.fitting_service import preprocess
 
 from domain.fitting.schemas.FittingRequestModel import FittingRequestModel
 
+
 class ImageModel(BaseModel):
     image: str
 
@@ -19,9 +20,9 @@ router = APIRouter(
 
 
 @router.post("/")
-async def create_virtual_fitting(model: Optional[FittingRequestModel] = None):
+async def create_virtual_fitting(request: Optional[FittingRequestModel] = None):
     # TODO: vton 모델을 통해 사람 이미지에 상의, 하의 또는 한벌옷을 피팅한 이미지 생성
-    print(model)
+    print(request)
 
     # s3에 가상 피팅 이미지 업로드 후 반환
     # url = upload_file(image)
