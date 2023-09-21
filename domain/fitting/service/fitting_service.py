@@ -3,6 +3,7 @@ import subprocess
 import glob
 import os
 import logging
+import time
 
 # s3를 사용하기 위해 import
 from domain.s3.s3_service import upload_general_file
@@ -18,17 +19,10 @@ def preprocess(url):
     logger.info("[Preprocess] fname(uuid): " + fname)
 
     # preprocess 쉘 스크립트 실행
-    # CUDA 환경 변수 설정
     os.chdir(preprocess_path)
-    exit_code2 = subprocess.run(["nvcc", "-v"])
-    subprocess.run(["nvidia-smi"])
-    exit_code = subprocess.run(
+    subprocess.run(
         ["bash", preprocess_path + "preprocess.sh", "--dataroot", dataroot, "--dir", fname, "--url", url])
     os.chdir(origin_path)
-
-    # if exit_code == 1:
-    #     logger.error("[Preprocess] preprocess failed")
-    #     raise Exception("preprocess failed")
 
     file_map = {
         "2.json": "keypoint",

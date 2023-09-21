@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, File, UploadFile
 
@@ -8,22 +8,6 @@ from pydantic import BaseModel
 from domain.fitting.service.fitting_service import preprocess
 
 from domain.fitting.schemas.FittingRequestModel import FittingRequestModel
-
-
-# class ClothesInfo(BaseModel):
-#     type: str
-#     url: str
-#
-#
-# class FittingRequestModel(BaseModel):
-#     model: str
-#     labelMap: str
-#     skeleton: str
-#     keypoint: str
-#     dense: str
-#     denseNpz: str
-#     clothesList: List[ClothesInfo]
-
 
 class ImageModel(BaseModel):
     image: str
@@ -35,7 +19,7 @@ router = APIRouter(
 
 
 @router.post("/")
-async def create_virtual_fitting(model: FittingRequestModel):
+async def create_virtual_fitting(model: Optional[FittingRequestModel] = None):
     # TODO: vton 모델을 통해 사람 이미지에 상의, 하의 또는 한벌옷을 피팅한 이미지 생성
     print(model)
 
@@ -48,18 +32,3 @@ async def create_virtual_fitting(model: FittingRequestModel):
 @router.post("/preprocess", response_model=ModelRegistResponse)
 async def regist_fitting_model(request: ImageModel):
     return preprocess(request.image)
-
-    # label_map = "label_map"
-    # skeleton = "skeleton"
-    # keypoint = "keypoint"
-    # dense = "dense"
-    # dense_npz = "dense_npz"
-    #
-    # # TODO: vton 진행시 사용되는 모델이미지 전처리
-    # return {
-    #     "labelMap": label_map,
-    #     "skeleton": skeleton,
-    #     "keypoint": keypoint,
-    #     "dense": dense,
-    #     "denseNpz": dense_npz
-    # }
