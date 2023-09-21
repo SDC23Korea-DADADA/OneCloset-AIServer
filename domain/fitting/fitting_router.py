@@ -31,7 +31,7 @@ async def create_virtual_fitting(request: Optional[FittingRequestModel] = None):
 
     high_quality_url = increase_face_quality(request, model_url)
 
-    return {"image": result_url, "highQualityImage": high_quality_url}
+    return {"image": high_quality_url}
 
 
 @router.post("/preprocess", response_model=ModelRegistResponse)
