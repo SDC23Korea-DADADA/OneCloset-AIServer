@@ -49,6 +49,7 @@ def fitting(request, type, cloth_url):
         input_dir = dataroot + "/upper_body/images/"
         output_dir = vton_path + "results/unpaired/upper_body/"
         type_path = "upper_body"
+    preprocess_dir = input_dir[:-7]
 
     # 의류 이미지를 지정된 경로에 저장 & 의류 마스크 이미지 생성
     cloth_fname = str(uuid.uuid4())[:13].replace("-", "") + "_1.jpg"
@@ -58,7 +59,7 @@ def fitting(request, type, cloth_url):
     image = Image.open(input_dir + cloth_fname)
     new = resize_with_pad(image, 384, 512)
     new.save(input_dir + cloth_fname)
-    write_edge(input_dir + cloth_fname, input_dir + os.path.splitext(cloth_fname)[0] + ".png")
+    write_edge(input_dir + cloth_fname, preprocess_dir + "masks/" + os.path.splitext(cloth_fname)[0] + ".png")
 
     # Model 이미지를 지정된 경로에 저장
     model_fname = fname + "_0.jpg"
@@ -70,12 +71,12 @@ def fitting(request, type, cloth_url):
     new.save(input_dir + model_fname)
 
     # Model 전처리 이미지를 지정된 경로에 저장
-    input_dir = input_dir[:-7]
-    download_file(request.dense, input_dir + "dense/" + request.dense.split("/")[-1])
-    download_file(request.denseNpz, input_dir + "dense/" + request.denseNpz.split("/")[-1])
-    download_file(request.keypoint, input_dir + "keypoints/" + request.keypoint.split("/")[-1])
-    download_file(request.labelMap, input_dir + "label_maps/" + request.labelMap.split("/")[-1])
-    download_file(request.skeleton, input_dir + "skeletons/" + request.skeleton.split("/")[-1])
+
+    download_file(request.dense, preprocess_dir + "dense/" + request.dense.split("/")[-1])
+    download_file(request.denseNpz, preprocess_dir + "dense/" + request.denseNpz.split("/")[-1])
+    download_file(request.keypoint, preprocess_dir + "keypoints/" + request.keypoint.split("/")[-1])
+    download_file(request.labelMap, preprocess_dir + "label_maps/" + request.labelMap.split("/")[-1])
+    download_file(request.skeleton, preprocess_dir + "skeletons/" + request.skeleton.split("/")[-1])
 
     # 추론에 필요한 텍스트 파일 생성
     typeNum = type == "upper" and 0 or type == "lower" and 1 or 2
@@ -93,6 +94,7 @@ def fitting(request, type, cloth_url):
     # 가상피팅 결과 반환
     output_fname = fname + "_0.jpg"
     aws_url = upload_general_file(output_fname, output_dir)
+    print(aws_url)
     return aws_url
 
 
