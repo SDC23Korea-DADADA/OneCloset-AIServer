@@ -58,7 +58,7 @@ def fitting(request, type, cloth_url):
     model_fname = fname + "_0.jpg"
     download_file(request.model, temp_path + model_fname)
 
-    shutil.copy(temp_path + temp_path + model_fname, input_dir + model_fname)
+    shutil.copy(temp_path + model_fname, input_dir + model_fname)
     image = Image.open(input_dir + model_fname)
     new = resize_with_pad(image, 384, 512)
     new.save(input_dir + model_fname)
