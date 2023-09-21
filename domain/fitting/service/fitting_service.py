@@ -71,7 +71,6 @@ def fitting(request, type, cloth_url):
     new.save(input_dir + model_fname)
 
     # Model 전처리 이미지를 지정된 경로에 저장
-
     download_file(request.dense, preprocess_dir + "dense/" + request.dense.split("/")[-1])
     download_file(request.denseNpz, preprocess_dir + "dense/" + request.denseNpz.split("/")[-1])
     download_file(request.keypoint, preprocess_dir + "keypoints/" + request.keypoint.split("/")[-1])
@@ -80,10 +79,20 @@ def fitting(request, type, cloth_url):
 
     # 추론에 필요한 텍스트 파일 생성
     typeNum = type == "upper" and 0 or type == "lower" and 1 or 2
+    list = ['upper_body', 'lower_body', 'dresses']
+
     with open(dataroot + "/test_pairs_paired.txt", "w") as f:
         f.write(fname + "_0.jpg\t" + cloth_fname + "\t" + str(typeNum))
-    with open(dataroot + "/" + type_path + "/test_pairs_unpaired.txt", "w") as f:
-        f.write(fname + "_0.jpg\t" + cloth_fname)
+    for i in list:
+        with open(dataroot + "/" + i + "/test_pairs_unpaired.txt", "w") as f:
+            if typeNum == 0:
+                f.write(fname + "_0.jpg\t" + cloth_fname)
+        with open(dataroot + "/" + i + "/test_pairs_unpaired.txt", "w") as f:
+            if typeNum == 1:
+                f.write(fname + "_0.jpg\t" + cloth_fname)
+        with open(dataroot + "/" + i + "/test_pairs_unpaired.txt", "w") as f:
+            if typeNum == 2:
+                f.write(fname + "_0.jpg\t" + cloth_fname)
 
     # preprocess 쉘 스크립트 실행
     os.chdir(vton_path)
