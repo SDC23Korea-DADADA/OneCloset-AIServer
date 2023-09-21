@@ -85,13 +85,7 @@ def fitting(request, type, cloth_url):
         f.write(fname + "_0.jpg\t" + cloth_fname + "\t" + str(typeNum))
     for i in list:
         with open(dataroot + "/" + i + "/test_pairs_unpaired.txt", "w") as f:
-            if typeNum == 0:
-                f.write(fname + "_0.jpg\t" + cloth_fname)
-        with open(dataroot + "/" + i + "/test_pairs_unpaired.txt", "w") as f:
-            if typeNum == 1:
-                f.write(fname + "_0.jpg\t" + cloth_fname)
-        with open(dataroot + "/" + i + "/test_pairs_unpaired.txt", "w") as f:
-            if typeNum == 2:
+            if type in i:
                 f.write(fname + "_0.jpg\t" + cloth_fname)
 
     # preprocess 쉘 스크립트 실행
