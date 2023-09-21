@@ -19,17 +19,16 @@ def preprocess(url):
 
     # preprocess 쉘 스크립트 실행
     # CUDA 환경 변수 설정
-    os.environ["CUDA_HOME"] = "/usr/local/cuda-11.8"
-    os.environ["LD_LIBRARY_PATH"] = f"{os.environ.get('LD_LIBRARY_PATH', '')}:{os.environ['CUDA_HOME']}/lib64"
-
     os.chdir(preprocess_path)
+    exit_code2 = subprocess.run(["nvcc", "-v"])
+    subprocess.run(["nvidia-smi"])
     exit_code = subprocess.run(
         ["bash", preprocess_path + "preprocess.sh", "--dataroot", dataroot, "--dir", fname, "--url", url])
     os.chdir(origin_path)
 
-    if exit_code == 1:
-        logger.error("[Preprocess] preprocess failed")
-        raise Exception("preprocess failed")
+    # if exit_code == 1:
+    #     logger.error("[Preprocess] preprocess failed")
+    #     raise Exception("preprocess failed")
 
     file_map = {
         "2.json": "keypoint",
