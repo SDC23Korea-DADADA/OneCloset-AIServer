@@ -12,3 +12,4 @@ matplotlib
 scipy
 scikit-image
 ninja
+rembg

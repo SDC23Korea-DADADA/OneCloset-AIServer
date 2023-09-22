@@ -1,17 +1,16 @@
-from typing import List
-
+import time
+from typing import List, Optional
 from fastapi import APIRouter, File, UploadFile
+from domain.fitting.schemas.ModelRegistResponse import ModelRegistResponse
+from domain.fitting.service.face_quality_service import increase_face_quality
 from domain.s3.s3_service import upload_file
 from pydantic import BaseModel
+from domain.fitting.service.fitting_service import preprocess, fitting
+from domain.fitting.schemas.FittingRequestModel import FittingRequestModel
 
 
-class FittingRequestModel(BaseModel):
-    model: str
-    segmantation: str
-    poseSkeleton: str
-    keypoints: str
-    denseModel: str
-    clothesList: List[str]
+class ImageModel(BaseModel):
+    image: str
 
 
 router = APIRouter(
@@ -20,30 +19,30 @@ router = APIRouter(
 
 
 @router.post("/")
-async def create_virtual_fitting(model: FittingRequestModel):
-    # TODO: vton 모델을 통해 사람 이미지에 상의, 하의 또는 한벌옷을 피팅한 이미지 생성
-    print(model)
+async def create_virtual_fitting(request: Optional[FittingRequestModel] = None):
+    start_time = time.time()
 
-    # s3에 가상 피팅 이미지 업로드 후 반환
-    # url = upload_file(image)
-    url = "https://fitsta-bucket.s3.ap-northeast-2.amazonaws.com/123.png"
-    return {"image": url}
+    model_url = request.model
+    clothes_list = request.clothesList
+    result_url = None
+    for clothes in clothes_list:
+        result_url = fitting(request, clothes.type, clothes.url)
+        request.model = result_url
+
+    high_quality_url = increase_face_quality(request, model_url)
+
+    end_time = time.time()
+    print("가상피팅 처리시간 :", end_time - start_time, "seconds")
+
+    return {"image": high_quality_url}
 
 
-@router.post("/preprocess")
-async def regist_fitting_model(image: UploadFile = File(...)):
+@router.post("/preprocess", response_model=ModelRegistResponse)
+async def regist_fitting_model(request: ImageModel):
+    start_time = time.time()
 
-    origin_img_url = "origin_img_url"
-    segmentation = "segmentation22"
-    pose_skeleton = "pose_skeleton33"
-    keypoints = "keypoint44s"
-    dense_model = "dense_model55"
+    result = preprocess(request.image)
 
-    # TODO: vton 진행시 사용되는 모델이미지 전처리
-    return {
-        "originImg": origin_img_url,
-        "segmentation": segmentation,
-        "skeleton": pose_skeleton,
-        "keypoints": keypoints,
-        "denseModel": dense_model
-    }
+    end_time = time.time()
+    print("Model 전처리 처리시간 :", end_time - start_time, "seconds")
+    return result

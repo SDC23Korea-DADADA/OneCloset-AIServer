@@ -18,7 +18,7 @@ from rembg import remove
 
 # 디바이스 설정
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "9"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # 학습한 모델과 동일한 모델 정의
