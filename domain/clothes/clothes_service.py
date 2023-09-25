@@ -21,6 +21,8 @@ os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+current_directory = os.path.dirname(os.path.realpath(__file__))
+
 class MaterialModel(nn.Module):
     def __init__(self, *args, **kwargs):
         # 1. 모델 구조 정의
@@ -28,7 +30,6 @@ class MaterialModel(nn.Module):
         self.model = models.mobilenet_v3_large()
 
         # 2. 모델 가중치 로드
-        current_directory = os.path.dirname(os.path.realpath(__file__))
         self.load_weights(os.path.join(current_directory, "models/material_model_state_dict.pth"))
         self.model.eval()
 
@@ -78,58 +79,69 @@ class MaterialModel(nn.Module):
             material = top3_labels[0]
             return material
 
+class TypeModel(nn.Module):
+    def __init__(self, *args, **kwargs):
+        # 1. 모델 구조 정의
+        super().__init__(*args, **kwargs)
+        self.type_model = models.efficientnet_v2_s(weights=None)
+        self.type_model.classifier[1].out_features = 18
+
+        # 2. 모델 가중치 로드
+        self.load_weights(os.path.join(current_directory, "models/type_model_v2_state_dict.pth"))
+        self.type_model.eval()
+
+    def load_weights(self, model_path):
+        self.type_model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
+
+    async def preprocess_image(self, image_stream):
+        transform = transforms.Compose([
+            transforms.Lambda(lambda img: resize_and_pad(img)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+
+        image = Image.open(image_stream)
+        if image.mode == 'RGBA':
+            r, g, b, a = image.split()
+            bg = Image.new('RGB', image.size, (255, 255, 255))  # 흰색 배경
+            bg.paste(image, mask=a)
+            image = bg
+        image = transform(image).unsqueeze(0)
+
+        return image
+
+    async def predict(self, image_stream):
+        type_int_to_labels = {0: '긴팔티', 1: '반팔티', 2: '셔츠/블라우스', 3: '니트웨어', 4: '후드티', 5: '민소매',
+                              6: '긴바지', 7: '반바지', 8: '롱스커트', 9: '미니스커트', 10: '코트',
+                              11: '재킷', 12: '점퍼/짚업', 13: '패딩', 14: '가디건', 15: '베스트', 16: '원피스', 17: '점프수트'}
+
+        with torch.no_grad():
+            image = await self.preprocess_image(image_stream)
+            image = image.to(device)
+            outputs = self.type_model(image)
+            values, indices = torch.topk(outputs, 3)  # 상위 3개의 확률과 인덱스를 가져옴
+
+            top3_labels = [type_int_to_labels[idx.item()] for idx in indices[0]]
+            top3_probs = [val.item() * 100 for val in values[0]]
+
+            # 결과 출력
+            print('종류 추론 결과: ', end=' ')
+            for n in range(3):
+                print('%s - %.2f' % (top3_labels[n], top3_probs[n]), end=' ')
+            print()
+
+            return top3_labels[0]
+
+type_model = TypeModel()
 
 async def get_clothes_type(image_stream):
     # TODO: 딥러닝 모델을 통해 의류 종류 추론
-    type_int_to_labels = {0: '긴팔티', 1: '반팔티', 2: '셔츠/블라우스', 3: '니트웨어', 4: '후드티', 5: '민소매',
-                     6: '긴바지', 7: '반바지', 8: '롱스커트', 9: '미니스커트', 10: '코트',
-                     11: '재킷', 12: '점퍼/짚업', 13: '패딩', 14: '가디건', 15: '베스트', 16: '원피스', 17: '점프수트'}
-
-    transform = transforms.Compose([
-        transforms.Lambda(lambda img: resize_and_pad(img)),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
-
-    start_time = time.time()
-
-    current_directory = os.path.dirname(os.path.realpath(__file__))
-    model_path = os.path.join(current_directory, "models/type_model_v2_state_dict.pth")
-
-    model = models.efficientnet_v2_s(weights=None)
-    model.classifier[1].out_features = 18
-    model.load_state_dict(torch.load(model_path, map_location=device))  # 학습된 모델의 매개변수 불러오기
-    model.to(device)
-    model.eval()
-
-    image = Image.open(image_stream)
-    if image.mode == 'RGBA':
-        r, g, b, a = image.split()
-        bg = Image.new('RGB', image.size, (255, 255, 255))  # 흰색 배경
-        bg.paste(image, mask=a)
-        image = bg
-    image = transform(image).unsqueeze(0)
-
     infer_start_time = time.time()
-    with torch.no_grad():
-        image = image.to(device)
-        outputs = model(image)
-        values, indices = torch.topk(outputs, 3)  # 상위 3개의 확률과 인덱스를 가져옴
-
-        top3_labels = [type_int_to_labels[idx.item()] for idx in indices[0]]
-        top3_probs = [val.item() * 100 for val in values[0]]
-
-        # 결과 출력
-        print('종류 추론 결과: ', end=' ')
-        for n in range(3):
-            print('%s - %.2f' % (top3_labels[n], top3_probs[n]), end=' ')
-        print()
-        type = top3_labels[0]
-
+    type = await type_model.predict(image_stream)
     end_time = time.time()
-    print("종류 실행 시간", end_time - start_time, "seconds", ", 추론 시간", end_time - infer_start_time, "seconds")
 
-    # 라벨을 숫자로 변환
+    print("종류 추론 시간: ", end_time - infer_start_time, "seconds")
+
     return type
 
 
@@ -157,7 +169,7 @@ async def get_clothes_color(image_stream):
             color = '다채색'
     else:
         color = sorted_colors[0][0]
-    print('색상 실행 시간 ', time.time() - start_time, 'seconds')
+    print('색상 추론 시간 ', time.time() - start_time, 'seconds')
 
     return color
 
