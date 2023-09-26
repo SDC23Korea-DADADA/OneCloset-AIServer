@@ -23,6 +23,29 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 current_directory = os.path.dirname(os.path.realpath(__file__))
 
+# materials = {
+#     0: "코듀로이",
+#     1: "면",
+#     2: "니트",
+#     3: "데님",
+#     4: "시폰",
+#     5: "패딩",
+#     6: "트위드",
+#     7: "플리스",
+#     8: "가죽",
+# }
+    # 코듀로이 없음
+materials = {
+    0: "가죽",
+    1: "면",
+    2: "니트",
+    3: "데님",
+    4: "시폰",
+    5: "패딩",
+    6: "트위드",
+    7: "플리스",
+}
+
 class MaterialModel(nn.Module):
     def __init__(self, *args, **kwargs):
         # 1. 모델 구조 정의
@@ -30,7 +53,7 @@ class MaterialModel(nn.Module):
         self.model = models.mobilenet_v3_large()
 
         # 2. 모델 가중치 로드
-        self.load_weights(os.path.join(current_directory, "models/material_model_state_dict.pth"))
+        self.load_weights(os.path.join(current_directory, "models/material_model_v3_state_dict.pth"))
         self.model.eval()
 
     def load_weights(self, model_path):
@@ -51,31 +74,26 @@ class MaterialModel(nn.Module):
         return image
 
     async def predict(self, image):
-        material_int_to_labels = {
-            0: "코듀로이",
-            1: "면",
-            2: "니트",
-            3: "데님",
-            4: "시폰",
-            5: "패딩",
-            6: "트위드",
-            7: "플리스",
-            8: "가죽",
-        }
         k = 3
         with torch.no_grad():
             outputs = self.model(image)
             _, predicted = outputs.max(1)
 
             values, indices = torch.topk(outputs, k)
-            top3_labels = [idx.item() for idx in indices[0]]
-            top3_probs = [val.item() * 100 for val in values[0]]
+            try:
+                top3_labels = [idx.item() for idx in indices[0]]
+                top3_probs = [val.item() * 100 for val in values[0]]
+                # 결과 출력
+                print('재질 추론 결과: ', end=' ')
+                for n in range(k):
+                    print('%s - %.2f' % (materials[top3_labels[n]], top3_probs[n]), end=' ')
+                print()
+            except :
+                # 결과 출력
+                print('재질 추론 결과: ', end=' ')
+                print('%s - %.2f' % (materials[indices[0][0].item()], values[0][0].item() * 100))
 
-            # 결과 출력
-            print('재질 추론 결과: ', end=' ')
-            for n in range(k):
-                print('%s - %.2f' % (material_int_to_labels[top3_labels[n]], top3_probs[n]), end=' ')
-            print()
+
             material = top3_labels[0]
             return material
 
@@ -184,17 +202,7 @@ async def get_clothes_material(image_stream):
     image = await material_model.preprocess_image(image_stream)
 
     predicted_class = await material_model.predict(image)
-    materials = {
-        0: "코듀로이",
-        1: "면",
-        2: "니트",
-        3: "데님",
-        4: "시폰",
-        5: "패딩",
-        6: "트위드",
-        7: "플리스",
-        8: "가죽",
-    }
+
     # 끝 시간
     end_time = time.time()
     print("재질 실행 시간", end_time - start_time, "seconds", ", 추론 시간", end_time - infer_start_time)
