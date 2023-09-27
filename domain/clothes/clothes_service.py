@@ -23,21 +23,8 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 current_directory = os.path.dirname(os.path.realpath(__file__))
 
-# materials = {
-#     0: "코듀로이",
-#     1: "면",
-#     2: "니트",
-#     3: "데님",
-#     4: "시폰",
-#     5: "패딩",
-#     6: "트위드",
-#     7: "플리스",
-#     8: "가죽",
-# }
-
-# 코듀로이 없음
 materials = {
-    0: "가죽",
+    0: "코듀로이",
     1: "면",
     2: "니트",
     3: "데님",
@@ -45,7 +32,9 @@ materials = {
     5: "패딩",
     6: "트위드",
     7: "플리스",
+    8: "가죽",
 }
+
 
 class MaterialModel(nn.Module):
     def __init__(self, *args, **kwargs):
