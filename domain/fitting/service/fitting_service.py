@@ -145,9 +145,28 @@ def download_file(url, save_path):
 
 
 def download_file_png_to_jpg(url, save_path):
+    with requests.get(url) as r:
+        if r.status_code == 200:
+            # 이미지 데이터를 메모리에서 바로 로드합니다.
+            image = Image.open(io.BytesIO(r.content))
+
+            # RGBA 이미지를 RGB 이미지로 변환하기 전에 투명 부분을 흰색으로 채우기
+            if image.mode == 'RGBA':
+                r, g, b, a = image.split()
+                bg = Image.new('RGB', image.size, (255, 255, 255))
+                bg.paste(image, mask=a)
+                image = bg
+
+            # .jpg 확장자로 저장합니다.
+            image.save(save_path, "JPEG")
+
+            logger.info("[Download] " + url + " is completed and converted to JPG")
+        else:
+            logger.error("[Download] " + url + " is failed")
+
     # 이미지 요청 및 다운로드
-    urllib.request.urlretrieve(url, save_path)
-    logger.info("[Download] " + url + " is completed and converted to JPG")
+    # urllib.request.urlretrieve(url, save_path)
+    # logger.info("[Download] " + url + " is completed and converted to JPG")
     # with requests.get(url) as r:
     #     if r.status_code == 200:
     #         # 이미지 데이터를 메모리에서 바로 로드합니다.
