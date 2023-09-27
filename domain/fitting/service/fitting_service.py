@@ -11,6 +11,7 @@ import cv2
 import numpy as np
 import copy
 import json
+import io
 
 # s3를 사용하기 위해 import
 from domain.s3.s3_service import upload_general_file
@@ -53,7 +54,7 @@ def fitting(request, type, cloth_url):
 
     # 의류 이미지를 지정된 경로에 저장 & 의류 마스크 이미지 생성
     cloth_fname = str(uuid.uuid4())[:13].replace("-", "") + "_1.jpg"
-    download_file(cloth_url, temp_path + cloth_fname)
+    download_file_png_to_jpg(cloth_url, temp_path + cloth_fname)
 
     shutil.copy(temp_path + cloth_fname, input_dir + cloth_fname)
     image = Image.open(input_dir + cloth_fname)
@@ -138,6 +139,20 @@ def download_file(url, save_path):
             logger.info("[Download] " + url + " is completed")
             with open(save_path, 'wb') as f:
                 f.write(r.content)
+        else:
+            logger.error("[Download] " + url + " is failed")
+
+
+def download_file_png_to_jpg(url, save_path):
+    with requests.get(url) as r:
+        if r.status_code == 200:
+            # 이미지 데이터를 메모리에서 바로 로드합니다.
+            image = Image.open(io.BytesIO(r.content))
+
+            # .jpg 확장자로 저장합니다.
+            image.convert("RGB").save(save_path, "JPEG")  # PNG는 RGBA, JPG는 RGB로 저장되기 때문에 RGB로 변환
+
+            logger.info("[Download] " + url + " is completed and converted to JPG")
         else:
             logger.error("[Download] " + url + " is failed")
 
