@@ -147,6 +147,7 @@ def download_file(url, save_path):
 def download_file_png_to_jpg(url, save_path):
     # 이미지 요청 및 다운로드
     urllib.request.urlretrieve(url, save_path)
+    logger.info("[Download] " + url + " is completed and converted to JPG")
     # with requests.get(url) as r:
     #     if r.status_code == 200:
     #         # 이미지 데이터를 메모리에서 바로 로드합니다.
