@@ -43,7 +43,7 @@ async def get_clothes_info(image: UploadFile = File(...)):
     nobg_image.seek(0)
     color = await service.get_clothes_color(nobg_image)
     nobg_image.seek(0)
-    material = await service.get_clothes_material(nobg_image)
+    material = await service.get_clothes_material_efficient(nobg_image)
 
     response = {
         "image": url,

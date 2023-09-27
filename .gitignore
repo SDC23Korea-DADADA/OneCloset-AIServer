@@ -24,4 +24,5 @@ archive.zip
 domain/secret.py
 
 *.pt
+*.pth
 runs
