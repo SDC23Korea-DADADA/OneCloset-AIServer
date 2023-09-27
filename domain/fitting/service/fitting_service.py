@@ -12,6 +12,7 @@ import numpy as np
 import copy
 import json
 import io
+import urllib.request
 
 # s3를 사용하기 위해 import
 from domain.s3.s3_service import upload_general_file
@@ -144,17 +145,18 @@ def download_file(url, save_path):
 
 
 def download_file_png_to_jpg(url, save_path):
-    with requests.get(url) as r:
-        if r.status_code == 200:
-            # 이미지 데이터를 메모리에서 바로 로드합니다.
-            image = Image.open(io.BytesIO(r.content))
-
-            # .jpg 확장자로 저장합니다.
-            image.convert("RGB").save(save_path, "JPEG")  # PNG는 RGBA, JPG는 RGB로 저장되기 때문에 RGB로 변환
-
-            logger.info("[Download] " + url + " is completed and converted to JPG")
-        else:
-            logger.error("[Download] " + url + " is failed")
+    # 이미지 요청 및 다운로드
+    urllib.request.urlretrieve(url, save_path)
+    # with requests.get(url) as r:
+    #     if r.status_code == 200:
+    #         # 이미지 데이터를 메모리에서 바로 로드합니다.
+    #         image = Image.open(io.BytesIO(r.content))
+    #
+    #         # .jpg 확장자로 저장합니다.
+    #         image.convert("RGB").save(save_path, "JPEG")  # PNG는 RGBA, JPG는 RGB로 저장되기 때문에 RGB로 변환
+    #         logger.info("[Download] " + url + " is completed and converted to JPG")
+    #     else:
+    #         logger.error("[Download] " + url + " is failed")
 
 
 def create_directory(path):
