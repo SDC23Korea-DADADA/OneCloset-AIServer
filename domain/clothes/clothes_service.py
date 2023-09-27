@@ -87,7 +87,7 @@ class TypeModel(nn.Module):
         self.type_model.classifier[1].out_features = 18
 
         # 2. 모델 가중치 로드
-        self.load_weights(os.path.join(current_directory, "models/type_model_v2_state_dict.pth"))
+        self.load_weights(os.path.join(current_directory, "models/type_model_state_dict.pth"))
         self.type_model.eval()
 
     def load_weights(self, model_path):
@@ -159,11 +159,13 @@ async def get_clothes_color(image_stream):
     result_str = ', '.join(formatted_colors)
     print('색상 추론 결과', result_str)
 
-    if(len(sorted_colors) >= 2 and (sorted_colors[0][1] < 0.5 or sorted_colors[1][1] > 0.3)):
+    # if(len(sorted_colors) >= 2 and (sorted_colors[0][1] < 0.5 or sorted_colors[1][1] > 0.3)):
+    if(len(sorted_colors) >= 2 and (sorted_colors[0][1] < 0.5)):
         if((sorted_colors[0][0] in ('네이비', '블루', '스카이블루') and sorted_colors[1][0] in ('네이비', '블루', '스카이블루'))
             or (sorted_colors[0][0] in ('핑크', '퍼플') and sorted_colors[1][0] in ('핑크', '퍼플'))
             or (sorted_colors[0][0] in ('그린', '민트') and sorted_colors[1][0] in ('그린', '민트'))
-            or (sorted_colors[0][0] in ('베이지', '카키', '브라운') and sorted_colors[1][0] in ('베이지', '카키', '브라운'))):
+            or (sorted_colors[0][0] in ('베이지', '카키', '브라운') and sorted_colors[1][0] in ('베이지', '카키', '브라운'))
+            or (sorted_colors[0][0] in ('옐로우', '오렌지') and sorted_colors[1][0] in ('옐로우', '오렌지'))):
             color = sorted_colors[0][0]
         else:
             color = '다채색'
@@ -259,7 +261,8 @@ color_classes = {
     '옐로우': [255, 255, 0], '골드': [255, 215, 0], '레몬쉬폰': [255, 250, 205],
     '오렌지': [255, 165, 0], '다크오렌지': [255, 140, 0], '코랄': [255, 127, 80],
     '와인': [114, 47, 55],
-    '카키': [189, 183, 107],
+    # '카키': [189, 183, 107],
+    '카키': [109, 106, 10],
     '퍼플': [128, 0, 128], '미디엄퍼플': [147, 112, 219],
     '핑크': [255, 192, 203], '핫핑크': [255, 105, 180], '딥핑크': [255, 20, 147],
     '화이트': [255, 255, 255], '스노우': [255, 250, 250], '화이트스모크': [245, 245, 245]
