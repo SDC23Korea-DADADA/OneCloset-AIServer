@@ -23,6 +23,30 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 current_directory = os.path.dirname(os.path.realpath(__file__))
 
+# materials = {
+#     0: "코듀로이",
+#     1: "면",
+#     2: "니트",
+#     3: "데님",
+#     4: "시폰",
+#     5: "패딩",
+#     6: "트위드",
+#     7: "플리스",
+#     8: "가죽",
+# }
+
+# 코듀로이 없음
+materials = {
+    0: "가죽",
+    1: "면",
+    2: "니트",
+    3: "데님",
+    4: "시폰",
+    5: "패딩",
+    6: "트위드",
+    7: "플리스",
+}
+
 class MaterialModel(nn.Module):
     def __init__(self, *args, **kwargs):
         # 1. 모델 구조 정의
@@ -30,7 +54,7 @@ class MaterialModel(nn.Module):
         self.model = models.mobilenet_v3_large()
 
         # 2. 모델 가중치 로드
-        self.load_weights(os.path.join(current_directory, "models/material_model_state_dict.pth"))
+        self.load_weights(os.path.join(current_directory, "models/material_model_v3_state_dict.pth"))
         self.model.eval()
 
     def load_weights(self, model_path):
@@ -51,31 +75,26 @@ class MaterialModel(nn.Module):
         return image
 
     async def predict(self, image):
-        material_int_to_labels = {
-            0: "코듀로이",
-            1: "면",
-            2: "니트",
-            3: "데님",
-            4: "시폰",
-            5: "패딩",
-            6: "트위드",
-            7: "플리스",
-            8: "가죽",
-        }
         k = 3
         with torch.no_grad():
             outputs = self.model(image)
             _, predicted = outputs.max(1)
 
             values, indices = torch.topk(outputs, k)
-            top3_labels = [idx.item() for idx in indices[0]]
-            top3_probs = [val.item() * 100 for val in values[0]]
+            try:
+                top3_labels = [idx.item() for idx in indices[0]]
+                top3_probs = [val.item() * 100 for val in values[0]]
+                # 결과 출력
+                print('재질 추론 결과: ', end=' ')
+                for n in range(k):
+                    print('%s - %.2f' % (materials[top3_labels[n]], top3_probs[n]), end=' ')
+                print()
+            except :
+                # 결과 출력
+                print('재질 추론 결과: ', end=' ')
+                print('%s - %.2f' % (materials[indices[0][0].item()], values[0][0].item() * 100))
 
-            # 결과 출력
-            print('재질 추론 결과: ', end=' ')
-            for n in range(k):
-                print('%s - %.2f' % (material_int_to_labels[top3_labels[n]], top3_probs[n]), end=' ')
-            print()
+
             material = top3_labels[0]
             return material
 
@@ -87,7 +106,8 @@ class TypeModel(nn.Module):
         self.type_model.classifier[1].out_features = 18
 
         # 2. 모델 가중치 로드
-        self.load_weights(os.path.join(current_directory, "models/type_model_v2_state_dict.pth"))
+        self.load_weights(os.path.join(current_directory, "models/type_model_state_dict.pth"))
+        self.type_model.to(device)
         self.type_model.eval()
 
     def load_weights(self, model_path):
@@ -169,8 +189,8 @@ async def get_clothes_color(image_stream):
             color = '다채색'
     else:
         color = sorted_colors[0][0]
-    print('색상 추론 시간 ', time.time() - start_time, 'seconds')
 
+    print('색상 추론 시간 ', time.time() - start_time, 'seconds')
     return color
 
 
@@ -184,17 +204,7 @@ async def get_clothes_material(image_stream):
     image = await material_model.preprocess_image(image_stream)
 
     predicted_class = await material_model.predict(image)
-    materials = {
-        0: "코듀로이",
-        1: "면",
-        2: "니트",
-        3: "데님",
-        4: "시폰",
-        5: "패딩",
-        6: "트위드",
-        7: "플리스",
-        8: "가죽",
-    }
+
     # 끝 시간
     end_time = time.time()
     print("재질 실행 시간", end_time - start_time, "seconds", ", 추론 시간", end_time - infer_start_time)
@@ -273,6 +283,7 @@ class_mapping = {
     '핑크': '핑크', '핫핑크': '핑크', '딥핑크': '핑크', '화이트': '화이트', '스노우': '화이트', '화이트스모크': '화이트'
 }
 
+
 # k-means로 주요 색상 뽑아내기
 def extract_dominant_color(image_stream, k=5):
     # PIL 이미지로 변환합니다.
@@ -307,6 +318,7 @@ def extract_dominant_color(image_stream, k=5):
     # 클러스터링 결과에서 각 클러스터의 중심을 반환
     return dominant_colors, proportions
 
+
 def closest_color_class(dominant_color):
     # 각 색상 클래스를 Lab 공간으로 변환
     color_keys = list(color_classes.keys())
@@ -324,6 +336,7 @@ def closest_color_class(dominant_color):
 
     return class_mapping[closest_color_key]
 
+
 def aggregate_colors(dominant_colors, proportions):
     color_class_mapping = {}
 
@@ -339,3 +352,29 @@ def aggregate_colors(dominant_colors, proportions):
     sorted_colors = sorted(color_class_mapping.items(), key=lambda x: x[1], reverse=True)
 
     return sorted_colors
+
+
+async def is_clothes(image_stream):
+    # TODO: 딥러닝 모델을 통해 의류 여부 확인
+    # 시작 시간
+    start_time = time.time()
+    image = Image.open(image_stream)
+    model_path = os.path.abspath("domain/clothes/models/cloth_detect_model.pt")
+    model = torch.hub.load('ultralytics/yolov5', 'custom', path=model_path, force_reload=True)
+    # 추론 시작
+    infer_start_time = time.time()
+    results = model(image)  # inference
+    # results.save()
+    confidence_list = results.pandas().xyxy[0]['confidence'].tolist()
+
+    # 끝 시간
+    end_time = time.time()
+    result = {"isClothes":True, "confidences":confidence_list}
+    print("의류 여부 판별 시간: ", (end_time - start_time).__format__(".2f"), "seconds,", ", 추론 시간: ", (end_time - infer_start_time).__format__(".2f"))
+    # 임계값 이상인 것이 있을 경우에 True 반환
+    for confidence in confidence_list:
+        if confidence > 0.8:
+            return result
+
+    result['isClothes'] = False
+    return result

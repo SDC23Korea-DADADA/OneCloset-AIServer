@@ -22,3 +22,6 @@ docs.zip
 archive.zip
 
 domain/secret.py
+
+*.pt
+runs
