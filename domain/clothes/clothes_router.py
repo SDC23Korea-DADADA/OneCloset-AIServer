@@ -16,8 +16,8 @@ async def check_clothes(image: UploadFile = File(...)):
     image_data = await image.read()
     image_stream = io.BytesIO(image_data)
 
-    is_clothes = await service.is_clothes(image_stream)
-    return {"isClothes": is_clothes}
+    result = await service.is_clothes(image_stream)
+    return result
 
 
 @router.post("/rembg")

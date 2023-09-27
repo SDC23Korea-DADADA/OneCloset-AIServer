@@ -364,11 +364,12 @@ async def is_clothes(image_stream):
 
     # 끝 시간
     end_time = time.time()
-
+    result = {"isClothes":True, "confidences":confidence_list}
     print("의류 여부 판별 시간: ", (end_time - start_time).__format__(".2f"), "seconds,", ", 추론 시간: ", (end_time - infer_start_time).__format__(".2f"))
     # 임계값 이상인 것이 있을 경우에 True 반환
     for confidence in confidence_list:
         if confidence > 0.8:
-            return True
+            return result
 
-    return False
+    result['isClothes'] = False
+    return result
