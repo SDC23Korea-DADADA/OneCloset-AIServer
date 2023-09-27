@@ -179,11 +179,12 @@ async def get_clothes_color(image_stream):
     result_str = ', '.join(formatted_colors)
     print('색상 추론 결과', result_str)
 
-    if(len(sorted_colors) >= 2 and (sorted_colors[0][1] < 0.5 or sorted_colors[1][1] > 0.3)):
+    if(len(sorted_colors) >= 2 and (sorted_colors[0][1] < 0.5)):
         if((sorted_colors[0][0] in ('네이비', '블루', '스카이블루') and sorted_colors[1][0] in ('네이비', '블루', '스카이블루'))
             or (sorted_colors[0][0] in ('핑크', '퍼플') and sorted_colors[1][0] in ('핑크', '퍼플'))
             or (sorted_colors[0][0] in ('그린', '민트') and sorted_colors[1][0] in ('그린', '민트'))
-            or (sorted_colors[0][0] in ('베이지', '카키', '브라운') and sorted_colors[1][0] in ('베이지', '카키', '브라운'))):
+            or (sorted_colors[0][0] in ('베이지', '카키', '브라운') and sorted_colors[1][0] in ('베이지', '카키', '브라운'))
+            or (sorted_colors[0][0] in ('옐로우', '오렌지') and sorted_colors[1][0] in ('옐로우', '오렌지'))):
             color = sorted_colors[0][0]
         else:
             color = '다채색'
