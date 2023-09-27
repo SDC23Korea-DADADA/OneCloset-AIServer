@@ -34,7 +34,8 @@ current_directory = os.path.dirname(os.path.realpath(__file__))
 #     7: "플리스",
 #     8: "가죽",
 # }
-    # 코듀로이 없음
+
+# 코듀로이 없음
 materials = {
     0: "가죽",
     1: "면",
@@ -347,3 +348,27 @@ def aggregate_colors(dominant_colors, proportions):
     sorted_colors = sorted(color_class_mapping.items(), key=lambda x: x[1], reverse=True)
 
     return sorted_colors
+
+async def is_clothes(image_stream):
+    # TODO: 딥러닝 모델을 통해 의류 여부 확인
+    # 시작 시간
+    start_time = time.time()
+    image = Image.open(image_stream)
+    model_path = os.path.abspath("domain/clothes/models/cloth_detect_model.pt")
+    model = torch.hub.load('ultralytics/yolov5', 'custom', path=model_path, force_reload=True)
+    # 추론 시작
+    infer_start_time = time.time()
+    results = model(image)  # inference
+    # results.save()
+    confidence_list = results.pandas().xyxy[0]['confidence'].tolist()
+
+    # 끝 시간
+    end_time = time.time()
+
+    print("의류 여부 판별 시간: ", (end_time - start_time).__format__(".2f"), "seconds,", ", 추론 시간: ", (end_time - infer_start_time).__format__(".2f"))
+    # 임계값 이상인 것이 있을 경우에 True 반환
+    for confidence in confidence_list:
+        if confidence > 0.8:
+            return True
+
+    return False

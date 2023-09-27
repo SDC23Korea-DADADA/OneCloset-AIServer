@@ -11,8 +11,12 @@ router = APIRouter(
 
 @router.post("/check")
 async def check_clothes(image: UploadFile = File(...)):
+
     # TODO: 의류 이미지 판별 로직
-    is_clothes = True
+    image_data = await image.read()
+    image_stream = io.BytesIO(image_data)
+
+    is_clothes = await service.is_clothes(image_stream)
     return {"isClothes": is_clothes}
 
 
