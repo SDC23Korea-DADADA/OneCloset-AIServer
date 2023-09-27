@@ -107,6 +107,7 @@ class TypeModel(nn.Module):
 
         # 2. 모델 가중치 로드
         self.load_weights(os.path.join(current_directory, "models/type_model_state_dict.pth"))
+        self.type_model.to(device)
         self.type_model.eval()
 
     def load_weights(self, model_path):
