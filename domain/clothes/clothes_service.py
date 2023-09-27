@@ -98,6 +98,58 @@ class MaterialModel(nn.Module):
             material = top3_labels[0]
             return material
 
+class MaterialModelEfficient(nn.Module):
+    def __init__(self, *args, **kwargs):
+        # 1. 모델 구조 정의
+        super().__init__(*args, **kwargs)
+        self.model = models.efficientnet_b5()
+
+        # 2. 모델 가중치 로드
+        self.load_weights(os.path.join(current_directory, "models/checkpoint4.pth"))
+        self.model.eval()
+
+    def load_weights(self, model_path):
+        # CPU에서 실행
+        self.model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
+
+    async def preprocess_image(self, image_stream):
+        # image_data = await image_stream.read()
+        image = Image.open(image_stream).convert('RGB')
+
+        transform = transforms.Compose([
+            transforms.Resize(456),
+            transforms.CenterCrop(456),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
+        image = transform(image).unsqueeze(0)
+        return image
+
+    async def predict(self, image):
+        k = 3
+        with torch.no_grad():
+            outputs = self.model(image)
+            _, predicted = outputs.max(1)
+
+            values, indices = torch.topk(outputs, k)
+            try:
+                top3_labels = [idx.item() for idx in indices[0]]
+                top3_probs = [val.item() * 100 for val in values[0]]
+                # 결과 출력
+                print('재질 추론 결과: ', end=' ')
+                for n in range(k):
+                    print('%s - %.2f' % (materials[top3_labels[n]], top3_probs[n]), end=' ')
+                print()
+            except :
+                # 결과 출력
+                print('재질 추론 결과: ', end=' ')
+                print('%s - %.2f' % (materials[indices[0][0].item()], values[0][0].item() * 100))
+
+
+            material = top3_labels[0]
+            return material
+
+
 class TypeModel(nn.Module):
     def __init__(self, *args, **kwargs):
         # 1. 모델 구조 정의
@@ -159,7 +211,6 @@ async def get_clothes_type(image_stream):
     infer_start_time = time.time()
     type = await type_model.predict(image_stream)
     end_time = time.time()
-
     print("종류 추론 시간: ", end_time - infer_start_time, "seconds")
 
     return type
@@ -179,11 +230,12 @@ async def get_clothes_color(image_stream):
     result_str = ', '.join(formatted_colors)
     print('색상 추론 결과', result_str)
 
-    if(len(sorted_colors) >= 2 and (sorted_colors[0][1] < 0.5 or sorted_colors[1][1] > 0.3)):
+    if(len(sorted_colors) >= 2 and (sorted_colors[0][1] < 0.5)):
         if((sorted_colors[0][0] in ('네이비', '블루', '스카이블루') and sorted_colors[1][0] in ('네이비', '블루', '스카이블루'))
             or (sorted_colors[0][0] in ('핑크', '퍼플') and sorted_colors[1][0] in ('핑크', '퍼플'))
             or (sorted_colors[0][0] in ('그린', '민트') and sorted_colors[1][0] in ('그린', '민트'))
-            or (sorted_colors[0][0] in ('베이지', '카키', '브라운') and sorted_colors[1][0] in ('베이지', '카키', '브라운'))):
+            or (sorted_colors[0][0] in ('베이지', '카키', '브라운') and sorted_colors[1][0] in ('베이지', '카키', '브라운'))
+            or (sorted_colors[0][0] in ('옐로우', '오렌지') and sorted_colors[1][0] in ('옐로우', '오렌지'))):
             color = sorted_colors[0][0]
         else:
             color = '다채색'
@@ -209,6 +261,23 @@ async def get_clothes_material(image_stream):
     end_time = time.time()
     print("재질 실행 시간", end_time - start_time, "seconds", ", 추론 시간", end_time - infer_start_time)
     return materials[predicted_class]
+
+async def get_clothes_material_efficient(image_stream):
+    # TODO: 딥러닝 모델을 통해 의류 재질 추론
+    # 시작 시간
+    start_time = time.time()
+    material_model = MaterialModelEfficient()
+    # 추론 시작
+    infer_start_time = time.time()
+    image = await material_model.preprocess_image(image_stream)
+
+    predicted_class = await material_model.predict(image)
+
+    # 끝 시간
+    end_time = time.time()
+    print("재질 실행 시간", end_time - start_time, "seconds", ", 추론 시간", end_time - infer_start_time)
+    return materials[predicted_class]
+
 
 
 def get_clothes_image(image_stream):
@@ -364,7 +433,7 @@ async def is_clothes(image_stream):
     # 추론 시작
     infer_start_time = time.time()
     results = model(image)  # inference
-    # results.save()
+    results.save()
     confidence_list = results.pandas().xyxy[0]['confidence'].tolist()
 
     # 끝 시간
