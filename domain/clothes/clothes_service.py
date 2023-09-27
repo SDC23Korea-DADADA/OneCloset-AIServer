@@ -106,7 +106,7 @@ class TypeModel(nn.Module):
         self.type_model.classifier[1].out_features = 18
 
         # 2. 모델 가중치 로드
-        self.load_weights(os.path.join(current_directory, "models/type_model_v2_state_dict.pth"))
+        self.load_weights(os.path.join(current_directory, "models/type_model_state_dict.pth"))
         self.type_model.eval()
 
     def load_weights(self, model_path):
@@ -188,8 +188,8 @@ async def get_clothes_color(image_stream):
             color = '다채색'
     else:
         color = sorted_colors[0][0]
-    print('색상 추론 시간 ', time.time() - start_time, 'seconds')
 
+    print('색상 추론 시간 ', time.time() - start_time, 'seconds')
     return color
 
 
@@ -282,6 +282,7 @@ class_mapping = {
     '핑크': '핑크', '핫핑크': '핑크', '딥핑크': '핑크', '화이트': '화이트', '스노우': '화이트', '화이트스모크': '화이트'
 }
 
+
 # k-means로 주요 색상 뽑아내기
 def extract_dominant_color(image_stream, k=5):
     # PIL 이미지로 변환합니다.
@@ -316,6 +317,7 @@ def extract_dominant_color(image_stream, k=5):
     # 클러스터링 결과에서 각 클러스터의 중심을 반환
     return dominant_colors, proportions
 
+
 def closest_color_class(dominant_color):
     # 각 색상 클래스를 Lab 공간으로 변환
     color_keys = list(color_classes.keys())
@@ -333,6 +335,7 @@ def closest_color_class(dominant_color):
 
     return class_mapping[closest_color_key]
 
+
 def aggregate_colors(dominant_colors, proportions):
     color_class_mapping = {}
 
@@ -348,6 +351,7 @@ def aggregate_colors(dominant_colors, proportions):
     sorted_colors = sorted(color_class_mapping.items(), key=lambda x: x[1], reverse=True)
 
     return sorted_colors
+
 
 async def is_clothes(image_stream):
     # TODO: 딥러닝 모델을 통해 의류 여부 확인
