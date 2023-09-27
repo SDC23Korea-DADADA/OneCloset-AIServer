@@ -110,10 +110,23 @@ def preprocess(url):
     fname = str(uuid.uuid4())[:13].replace("-", "")
     logger.info("[Preprocess] fname(uuid): " + fname)
 
+    # 이미지 다운로드하여 임시 저장
+    temp_path = preprocess_path + "temps/"
+    download_file(url, temp_path + fname + ".jpg")
+
+    # 이미지 리사이즈
+    image = Image.open(temp_path + fname + ".jpg")
+    new = resize_with_pad(image, 384, 512)
+    new.save(temp_path + fname + ".jpg")
+
+    # 리사이즈된 이미지를 aws s3에 업로드 후 url 저장
+    aws_url = upload_general_file(fname + ".jpg", temp_path)
+    logger.info("[Preprocess Resize Image] aws_url: " + aws_url)
+
     # preprocess 쉘 스크립트 실행
     os.chdir(preprocess_path)
     subprocess.run(
-        ["bash", preprocess_path + "preprocess.sh", "--dataroot", dataroot, "--dir", fname, "--url", url])
+        ["bash", preprocess_path + "preprocess.sh", "--dataroot", dataroot, "--dir", fname, "--url", aws_url])
     os.chdir(origin_path)
 
     file_map = {
