@@ -1,10 +1,7 @@
-import cv2
-
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torchvision
 import torchvision.transforms as transforms
 import torchvision.models as models
 from PIL import Image
@@ -14,7 +11,6 @@ import time
 import os
 from rembg import remove
 import colorspacious as cs
-import matplotlib.pyplot as plt
 
 # 디바이스 설정
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -36,14 +32,26 @@ materials = {
 }
 
 
+def singleton(cls):
+    instances = {}
+
+    def get_instance(*args, **kwargs):
+        if cls not in instances:
+            instances[cls] = cls(*args, **kwargs)
+        return instances[cls]
+
+    return get_instance
+
+
+@singleton
 class MaterialModel(nn.Module):
     def __init__(self, *args, **kwargs):
         # 1. 모델 구조 정의
         super().__init__(*args, **kwargs)
-        self.model = models.mobilenet_v3_large()
+        self.model = models.efficientnet_v2_m()
 
         # 2. 모델 가중치 로드
-        self.load_weights(os.path.join(current_directory, "models/material_model_v3_state_dict.pth"))
+        self.load_weights(os.path.join(current_directory, "models/material_model_state_dict.pth"))
         self.model.eval()
 
     def load_weights(self, model_path):
@@ -55,88 +63,40 @@ class MaterialModel(nn.Module):
         image = Image.open(image_stream).convert('RGB')
 
         transform = transforms.Compose([
-            transforms.Resize(224),
-            transforms.CenterCrop(224),
+            transforms.Resize(480),
+            transforms.CenterCrop(480),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])
         image = transform(image).unsqueeze(0)
         return image
 
-    async def predict(self, image):
-        k = 3
-        with torch.no_grad():
-            outputs = self.model(image)
-            _, predicted = outputs.max(1)
-
-            values, indices = torch.topk(outputs, k)
-            try:
-                top3_labels = [idx.item() for idx in indices[0]]
-                top3_probs = [val.item() * 100 for val in values[0]]
-                # 결과 출력
-                print('재질 추론 결과: ', end=' ')
-                for n in range(k):
-                    print('%s - %.2f' % (materials[top3_labels[n]], top3_probs[n]), end=' ')
-                print()
-            except :
-                # 결과 출력
-                print('재질 추론 결과: ', end=' ')
-                print('%s - %.2f' % (materials[indices[0][0].item()], values[0][0].item() * 100))
-
-
-            material = top3_labels[0]
-            return material
-
-class MaterialModelEfficient(nn.Module):
-    def __init__(self, *args, **kwargs):
-        # 1. 모델 구조 정의
-        super().__init__(*args, **kwargs)
-        self.model = models.efficientnet_b5()
-
-        # 2. 모델 가중치 로드
-        self.load_weights(os.path.join(current_directory, "models/checkpoint4.pth"))
-        self.model.eval()
-
-    def load_weights(self, model_path):
-        # CPU에서 실행
-        self.model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
-
-    async def preprocess_image(self, image_stream):
-        # image_data = await image_stream.read()
-        image = Image.open(image_stream).convert('RGB')
-
-        transform = transforms.Compose([
-            transforms.Resize(456),
-            transforms.CenterCrop(456),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ])
-        image = transform(image).unsqueeze(0)
-        return image
 
     async def predict(self, image):
         k = 3
         with torch.no_grad():
             outputs = self.model(image)
-            _, predicted = outputs.max(1)
 
-            values, indices = torch.topk(outputs, k)
+            # softmax 함수를 사용하여 출력을 확률 분포로 변환
+            probs = F.softmax(outputs, dim=1)
+
+            # 확률 값 중에서 top-k 값을 가져옴
+            top3_probs, top3_labels = torch.topk(probs, k)
+
             try:
-                top3_labels = [idx.item() for idx in indices[0]]
-                top3_probs = [val.item() * 100 for val in values[0]]
+                top3_labels = [idx.item() for idx in top3_labels[0]]
+                top3_probs = [val.item() * 100 for val in top3_probs[0]]  # 확률을 백분율로 변환
                 # 결과 출력
                 print('재질 추론 결과: ', end=' ')
                 for n in range(k):
-                    print('%s - %.2f' % (materials[top3_labels[n]], top3_probs[n]), end=' ')
+                    print('%s - %.2f%%' % (materials[top3_labels[n]], top3_probs[n]), end=' ')  # % 기호 추가
                 print()
-            except :
+            except:
                 # 결과 출력
                 print('재질 추론 결과: ', end=' ')
-                print('%s - %.2f' % (materials[indices[0][0].item()], values[0][0].item() * 100))
-
-
-            material = top3_labels[0]
-            return material
+                print('%s - %.2f%%' % (materials[top3_labels[0].item()], top3_probs[0].item()))  # % 기호 추가
+            finally:
+                return top3_labels[0], top3_probs[0]
 
 
 class TypeModel(nn.Module):
@@ -193,7 +153,9 @@ class TypeModel(nn.Module):
 
             return top3_labels[0]
 
+
 type_model = TypeModel()
+
 
 async def get_clothes_type(image_stream):
     # TODO: 딥러닝 모델을 통해 의류 종류 추론
@@ -244,29 +206,14 @@ async def get_clothes_material(image_stream):
     infer_start_time = time.time()
     image = await material_model.preprocess_image(image_stream)
 
-    predicted_class = await material_model.predict(image)
+    predicted_class, predicted_percent = await material_model.predict(image)
 
     # 끝 시간
     end_time = time.time()
+    # print(predicted_class, " ", predicted_percent)
     print("재질 실행 시간", end_time - start_time, "seconds", ", 추론 시간", end_time - infer_start_time)
-    return materials[predicted_class]
-
-async def get_clothes_material_efficient(image_stream):
-    # TODO: 딥러닝 모델을 통해 의류 재질 추론
-    # 시작 시간
-    start_time = time.time()
-    material_model = MaterialModelEfficient()
-    # 추론 시작
-    infer_start_time = time.time()
-    image = await material_model.preprocess_image(image_stream)
-
-    predicted_class = await material_model.predict(image)
-
-    # 끝 시간
-    end_time = time.time()
-    print("재질 실행 시간", end_time - start_time, "seconds", ", 추론 시간", end_time - infer_start_time)
-    return materials[predicted_class]
-
+    if predicted_percent > 60 : return materials[predicted_class]
+    else: return "기타"
 
 
 def get_clothes_image(image_stream):
@@ -283,6 +230,7 @@ def get_clothes_image(image_stream):
     output = remove(input)
     # print(output)
     return output
+
 
 # 가로, 세로 비율 맞춰서 이미지 리사이즈 해주는 함수
 def resize_and_pad(image, size=256):
@@ -412,26 +360,36 @@ def aggregate_colors(dominant_colors, proportions):
     return sorted_colors
 
 
+@singleton
+class ClothesClassifier:
+    def __init__(self):
+        self.model_path = os.path.abspath("domain/clothes/models/cloth_detect_model.pt")
+        self.model = torch.hub.load('ultralytics/yolov5', 'custom', path=self.model_path, force_reload=True)
+
+    def predict(self, image):
+        return self.model(image)
+
+
 async def is_clothes(image_stream):
-    # TODO: 딥러닝 모델을 통해 의류 여부 확인
     # 시작 시간
     start_time = time.time()
     image = Image.open(image_stream)
-    model_path = os.path.abspath("domain/clothes/models/cloth_detect_model.pt")
-    model = torch.hub.load('ultralytics/yolov5', 'custom', path=model_path, force_reload=True)
+    model = ClothesClassifier()
+
     # 추론 시작
     infer_start_time = time.time()
-    results = model(image)  # inference
-    results.save()
+    results = model.predict(image)  # inference using the loaded model
     confidence_list = results.pandas().xyxy[0]['confidence'].tolist()
 
     # 끝 시간
     end_time = time.time()
-    result = {"isClothes":True, "confidences":confidence_list}
-    print("의류 여부 판별 시간: ", (end_time - start_time).__format__(".2f"), "seconds,", ", 추론 시간: ", (end_time - infer_start_time).__format__(".2f"))
+    result = {"isClothes": True, "confidences": confidence_list}
+    print("의류 여부 판별 시간: ", (end_time - start_time).__format__(".2f"), "seconds,", ", 추론 시간: ",
+          (end_time - infer_start_time).__format__(".2f"), end=" ")
+
     # 임계값 이상인 것이 있을 경우에 True 반환
     for confidence in confidence_list:
-        if confidence > 0.8:
+        if confidence >= 0.7:  # 0.7 까지는 옷 데이터가 추출됨
             return result
 
     result['isClothes'] = False
