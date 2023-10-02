@@ -6,6 +6,7 @@ import torchvision.transforms as transforms
 import torchvision.models as models
 from PIL import Image
 from sklearn.cluster import KMeans
+import cv2
 
 import time
 import os
@@ -172,6 +173,9 @@ async def get_clothes_color(image_stream):
     start_time = time.time()
     # 하나의 사진에 대한 추론
     dominant_colors, proportions = extract_dominant_color(image_stream)
+    # # 색상 rgb 값 확인용
+    # for dominant_color, proportion in zip(dominant_colors, proportions):
+    #     print(f"Dominant Color: {dominant_color} {proportion * 100: .2f}%")
 
     sorted_colors = aggregate_colors(dominant_colors, proportions)
 
@@ -184,9 +188,11 @@ async def get_clothes_color(image_stream):
     if(len(sorted_colors) >= 2 and (sorted_colors[0][1] < 0.5)):
         if((sorted_colors[0][0] in ('네이비', '블루', '스카이블루') and sorted_colors[1][0] in ('네이비', '블루', '스카이블루'))
             or (sorted_colors[0][0] in ('핑크', '퍼플') and sorted_colors[1][0] in ('핑크', '퍼플'))
-            or (sorted_colors[0][0] in ('그린', '민트') and sorted_colors[1][0] in ('그린', '민트'))
-            or (sorted_colors[0][0] in ('베이지', '카키', '브라운') and sorted_colors[1][0] in ('베이지', '카키', '브라운'))
-            or (sorted_colors[0][0] in ('옐로우', '오렌지') and sorted_colors[1][0] in ('옐로우', '오렌지'))):
+            or (sorted_colors[0][0] in ('그린', '민트', '카키') and sorted_colors[1][0] in ('그린', '민트' '카키'))
+            or (sorted_colors[0][0] in ('베이지', '브라운') and sorted_colors[1][0] in ('베이지', '브라운'))
+            or (sorted_colors[0][0] in ('옐로우', '오렌지') and sorted_colors[1][0] in ('옐로우', '오렌지'))
+            or (sorted_colors[0][0] in ('레드', '와인', '핑크') and sorted_colors[1][0] in ('레드', '와인', '핑크'))
+            or (sorted_colors[0][0] in ('화이트', '그레이') and sorted_colors[1][0] in ('화이트', '그레이'))):
             color = sorted_colors[0][0]
         else:
             color = '다채색'
@@ -259,29 +265,30 @@ def resize_and_pad(image, size=256):
 
     return image
 
-# 색상 클래스 정의 (HTML 색 기준)
+# 색상 클래스 정의
 color_classes = {
-    '블랙': [0, 0, 0],
+    '블랙': [0, 0, 0], '나이트': [12, 9, 10], '건메탈': [44, 53, 57], '미드나잇': [43, 27, 23], '오일': [59, 49, 49],
     '그레이': [128, 128, 128], '실버': [192, 192, 192], '딤그레이': [105, 105, 105],
     '그린': [0, 128, 0], '다크그린': [0, 100, 0], '옐로우그린': [154, 205, 50],
     '네이비': [0, 0, 128], '다크블루': [0, 0, 139], '미드나잇블루': [25, 25, 112],
-    '라벤더': [230, 230, 250],
-    '레드': [255, 0, 0], '인디안레드': [205, 92, 92],
-    '민트': [201, 236, 216],
-    '베이지': [245, 245, 220], '아이보리': [255, 255, 240],
-    '브라운': [165, 42, 42], '새들브라운': [139, 69, 19],
+    '라벤더': [191, 148, 228],
+    '레드': [255, 0, 0],
+    '민트': [156, 213, 194],
+    '베이지': [212, 184, 134],
+    '브라운': [150, 75, 0], '새들브라운': [139, 69, 19],
     '블루': [0, 0, 255], '스틸블루': [70, 130, 180],
     '스카이블루': [135, 206, 235], '딥스카이블루': [0, 191, 255], '아쿠아': [0, 255, 255],
     '옐로우': [255, 255, 0], '골드': [255, 215, 0], '레몬쉬폰': [255, 250, 205],
     '오렌지': [255, 165, 0], '다크오렌지': [255, 140, 0], '코랄': [255, 127, 80],
     '와인': [114, 47, 55],
-    '카키': [189, 183, 107],
+    '카키': [138, 147, 82],
     '퍼플': [128, 0, 128], '미디엄퍼플': [147, 112, 219],
     '핑크': [255, 192, 203], '핫핑크': [255, 105, 180], '딥핑크': [255, 20, 147],
-    '화이트': [255, 255, 255], '스노우': [255, 250, 250], '화이트스모크': [245, 245, 245]
+    '화이트': [255, 255, 255], '스노우': [255, 250, 250], '화이트스모크': [245, 245, 245] ,'아이보리': [255, 255, 240]
 }
 class_mapping = {
-    '블랙': '블랙', '그레이': '그레이', '실버': '그레이', '딤그레이': '그레이', '그린': '그린', '다크그린': '그린', '옐로우그린': '그린',
+    '블랙': '블랙', '나이트': '블랙', '건메탈': '블랙', '미드나잇': '블랙', '오일': '블랙',
+    '그레이': '그레이', '실버': '그레이', '딤그레이': '그레이', '그린': '그린', '다크그린': '그린', '옐로우그린': '그린',
     '네이비': '네이비', '다크블루': '네이비', '미드나잇블루': '네이비', '라벤더': '라벤더', '레드': '레드', '인디안레드': '레드',
     '민트': '민트', '베이지': '베이지', '아이보리': '베이지', '브라운': '브라운', '새들브라운': '브라운', '블루': '블루', '스틸블루': '블루',
     '스카이블루': '스카이블루', '딥스카이블루': '스카이블루', '아쿠아': '스카이블루', '옐로우': '옐로우', '골드': '옐로우', '레몬쉬폰': '옐로우',
@@ -292,22 +299,18 @@ class_mapping = {
 
 # k-means로 주요 색상 뽑아내기
 def extract_dominant_color(image_stream, k=5):
-    # PIL 이미지로 변환합니다.
     pil_image = Image.open(image_stream)
-
+    # 이미지의 크기를 256x256로 조정합니다.
+    resized_image = pil_image.resize((192, 192))
     # PIL 이미지를 NumPy 배열로 변환합니다.
-    image = np.array(pil_image)
+    image = np.array(resized_image)
+
+    image = enhance_brightness_and_saturation(image)
+    # Image.fromarray(image).show()  # 이미지 확인
 
     # 알파 채널을 사용하여 배경이 아닌 픽셀만 선택하고 알파 채널 제거
     mask = image[:, :, 3] > 0
     image_rgb = image[mask, :3]
-
-    if image_rgb.shape[0] > 300_000:
-        step_size = 10  # 리샘플링 간격
-        image_rgb = image_rgb[::step_size]
-    elif image_rgb.shape[0] > 150_000:
-        step_size = 5  # 리샘플링 간격
-        image_rgb = image_rgb[::step_size]
 
     kmeans = KMeans(n_clusters=k, n_init=10, init='k-means++')
     kmeans.fit(image_rgb)
@@ -324,6 +327,22 @@ def extract_dominant_color(image_stream, k=5):
     # 클러스터링 결과에서 각 클러스터의 중심을 반환
     return dominant_colors, proportions
 
+#  색상 보정 - 명도, 채도 조절
+def enhance_brightness_and_saturation(img_array, brightness_factor=1.2, saturation_factor=1.4):
+    # RGB에서 HSV로 변환
+    img_hsv = cv2.cvtColor(img_array[..., :3], cv2.COLOR_RGB2HSV).astype(float)  # 알파 채널 제외하고 변환
+    # 명도, 채도 조절
+    img_hsv[:,:,2] = np.clip(img_hsv[:,:,2] * brightness_factor, 0, 255)
+    img_hsv[:,:,1] = np.clip(img_hsv[:,:,1] * saturation_factor, 0, 255)
+
+    # HSV에서 RGB로 변환
+    img_rgb = cv2.cvtColor(img_hsv.astype(np.uint8), cv2.COLOR_HSV2RGB)
+
+    # 원본의 알파 채널이 있으면, 변환된 RGB 이미지에 알파 채널을 다시 추가
+    if img_array.shape[2] == 4:
+        return np.dstack((img_rgb, img_array[..., 3]))
+    else:
+        return img_rgb
 
 def closest_color_class(dominant_color):
     # 각 색상 클래스를 Lab 공간으로 변환
